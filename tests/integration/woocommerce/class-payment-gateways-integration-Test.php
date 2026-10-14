@@ -4,6 +4,9 @@ namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
 use JuicedPlugins\Venmo_Gateway_Pro\WPUnit_Testcase;
 
+/**
+ * @requires function WC
+ */
 class Payment_Gateways_Integration_Test extends WPUnit_Testcase {
 
 	/**

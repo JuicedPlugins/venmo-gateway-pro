@@ -12,6 +12,7 @@ use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\Integrations\WooCom
 use JuicedPlugins\Venmo_Gateway_Pro\API\Settings;
 use JuicedPlugins\Venmo_Gateway_Pro\API\Settings_Interface;
 use JuicedPlugins\Venmo_Gateway_Pro\Venmo_Username;
+use JuicedPlugins\Venmo_Gateway_Pro\Meta_Keys;
 use WC_Order;
 use WC_Payment_Gateway;
 
@@ -28,13 +29,12 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 	public $title = 'Venmo';
 
-	// TODO: use all underscores. Requires an upgrade routine.
-	const CUSTOMER_VENMO_USERNAME_META_KEY = '_customer_venmo_username';
+	const CUSTOMER_VENMO_USERNAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_USERNAME_META_KEY;
 
 	/**
 	 * The settings.store_venmo_username is saved to this order meta to know where we told the customer to pay.
 	 */
-	const STORE_VENMO_USERNAME_META_KEY = '_destination_account_venmo_username';
+	const STORE_VENMO_USERNAME_META_KEY = Meta_Keys::STORE_VENMO_USERNAME_META_KEY;
 
 	/**
 	 * Order meta key for the customer's full name as shown on their public Venmo profile, fetched in the
@@ -43,7 +43,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 *
 	 * @see Order::fetch_customer_venmo_profile()
 	 */
-	const CUSTOMER_VENMO_DISPLAY_NAME_META_KEY = '_customer_venmo_display_name';
+	const CUSTOMER_VENMO_DISPLAY_NAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_DISPLAY_NAME_META_KEY;
 
 	/**
 	 * @var Settings_Interface

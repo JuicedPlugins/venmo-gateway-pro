@@ -262,6 +262,7 @@ class V430_Test extends WPUnit_Testcase {
 
 	/**
 	 * @covers ::rename_options_once
+	 * @requires function wc_get_container
 	 */
 	public function test_hpos_order_meta_keys_are_renamed(): void {
 		global $wpdb;
