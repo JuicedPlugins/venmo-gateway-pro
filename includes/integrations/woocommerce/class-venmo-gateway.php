@@ -212,6 +212,20 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	}
 
 	/**
+	 * The name of the checkout field for the customer's Venmo username, e.g. `venmo_customer_venmo_username`.
+	 *
+	 * It includes the gateway id, so each gateway instance (e.g. duplicates created with Duplicate Payment Gateways)
+	 * has its own field in the shortcode checkout form. The blocks checkout sends it as payment data, which WooCommerce
+	 * sets as `$_POST` for `validate_fields()`.
+	 *
+	 * @see \Automattic\WooCommerce\StoreApi\Legacy::process_legacy_payment()
+	 * @see Venmo_Gateway_Blocks_Checkout_Support::get_payment_method_data()
+	 */
+	public function get_customer_venmo_username_field_name(): string {
+		return $this->id . self::CUSTOMER_VENMO_USERNAME_META_KEY;
+	}
+
+	/**
 	 * Frontend: prints the form displayed on the checkout.
 	 * i.e. a simple HTML text input for the Venmo username.
 	 */
@@ -225,7 +239,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 		$value       = $this->get_saved_venmo_username( $customer_id );
 
 		woocommerce_form_field(
-			self::CUSTOMER_VENMO_USERNAME_META_KEY,
+			$this->get_customer_venmo_username_field_name(),
 			array(
 				'label'       => 'Enter your Venmo username:',
 				'placeholder' => 'Venmo username',
@@ -246,7 +260,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 */
 	public function validate_fields(): bool {
 		// @phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! isset( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) || empty( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) ) {
+		if ( empty( $_POST[ $this->get_customer_venmo_username_field_name() ] ) ) {
 			wc_add_notice( __( 'Please enter your Venmo username.', 'juiced-venmo-gateway-pro' ), 'error' );
 			return false;
 		}
@@ -270,13 +284,13 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		// Ignore-because: we're not processing data here.
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( $data['payment_method'] !== $this->id || ! isset( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) ) {
+		if ( $data['payment_method'] !== $this->id || ! isset( $_POST[ $this->get_customer_venmo_username_field_name() ] ) ) {
 			return;
 		}
 
 		// Ignore-because: this seems safe.
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$customer_venmo_username = Venmo_Username::sanitize( sanitize_text_field( wp_unslash( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) ) );
+		$customer_venmo_username = Venmo_Username::sanitize( sanitize_text_field( wp_unslash( $_POST[ $this->get_customer_venmo_username_field_name() ] ) ) );
 
 		// Save Venmo username to order meta.
 		$order->add_meta_data( self::CUSTOMER_VENMO_USERNAME_META_KEY, $customer_venmo_username, true );
@@ -328,7 +342,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		$customer_venmo_username = '';
 		foreach ( $payment_data as $item ) {
-			if ( isset( $item['key'] ) && self::CUSTOMER_VENMO_USERNAME_META_KEY === $item['key'] ) {
+			if ( isset( $item['key'] ) && $this->get_customer_venmo_username_field_name() === $item['key'] ) {
 				$customer_venmo_username = Venmo_Username::sanitize( sanitize_text_field( $item['value'] ) );
 				break;
 			}
@@ -616,24 +630,28 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 		?>
 		<script type="text/javascript">
 		jQuery(document).ready(function($) {
+			// This gateway instance's id and username field, e.g. `venmo` and `#venmo_customer_venmo_username`.
+			var gatewayId = '<?php echo esc_js( $this->id ); ?>';
+			var usernameFieldSelector = '#<?php echo esc_js( $this->get_customer_venmo_username_field_name() ); ?>';
+
 			// Focus username field when Venmo payment method is selected
 			$(document.body).on('change', 'input[name="payment_method"]', function() {
-				if ($(this).val() === 'venmo') {
-					$('#<?php echo esc_js( self::CUSTOMER_VENMO_USERNAME_META_KEY ); ?>').focus();
+				if ($(this).val() === gatewayId) {
+					$(usernameFieldSelector).focus();
 				}
 			});
 
 			// If Venmo is already selected on page load, focus the field
-			if ($('input[name="payment_method"]:checked').val() === 'venmo') {
+			if ($('input[name="payment_method"]:checked').val() === gatewayId) {
 				setTimeout(function() {
-					$('#<?php echo esc_js( self::CUSTOMER_VENMO_USERNAME_META_KEY ); ?>').focus();
+					$(usernameFieldSelector).focus();
 				}, 100);
 			}
 
 			// Focus username field on validation error
 			$(document.body).on('checkout_error', function() {
-				if ($('input[name="payment_method"]:checked').val() === 'venmo') {
-					var $usernameField = $('#<?php echo esc_js( self::CUSTOMER_VENMO_USERNAME_META_KEY ); ?>');
+				if ($('input[name="payment_method"]:checked').val() === gatewayId) {
+					var $usernameField = $(usernameFieldSelector);
 					if ($usernameField.length && $usernameField.val() === '') {
 						$usernameField.focus();
 					}

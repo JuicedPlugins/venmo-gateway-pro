@@ -25,7 +25,9 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 	 * The real constructor calls plugins_url(), init_form_fields(), etc.
 	 * which need a full WordPress environment. For unit tests we skip it.
 	 *
-	 * @return Venmo_Gateway|\PHPUnit\Framework\MockObject\MockObject
+	 * @param string[] $methods_to_mock Methods to mock; the others are the real methods.
+	 *
+	 * @return Venmo_Gateway&\PHPUnit\Framework\MockObject\MockObject
 	 */
 	private function create_gateway_mock( array $methods_to_mock = array() ) {
 		$gateway = $this->getMockBuilder( Venmo_Gateway::class )
@@ -135,7 +137,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 	public function test_validate_fields_fails_when_username_empty(): void {
 		$gateway = $this->create_gateway_mock();
 
-		$_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] = '';
+		$_POST['venmo_customer_venmo_username'] = '';
 
 		\WP_Mock::userFunction( 'sanitize_text_field' )->andReturn( '' );
 		\WP_Mock::passthruFunction( 'wp_unslash' );
@@ -146,7 +148,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 
 		$this->assertFalse( $result );
 
-		unset( $_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] );
+		unset( $_POST['venmo_customer_venmo_username'] );
 	}
 
 	/**
@@ -157,7 +159,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 	public function test_validate_fields_passes_when_username_provided(): void {
 		$gateway = $this->create_gateway_mock();
 
-		$_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] = 'myvenmo';
+		$_POST['venmo_customer_venmo_username'] = 'myvenmo';
 
 		\WP_Mock::userFunction( 'sanitize_text_field' )->andReturn( 'myvenmo' );
 		\WP_Mock::passthruFunction( 'wp_unslash' );
@@ -166,7 +168,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 
 		$this->assertTrue( $result );
 
-		unset( $_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] );
+		unset( $_POST['venmo_customer_venmo_username'] );
 	}
 
 	/**
@@ -185,7 +187,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 		$order->expects( $this->exactly( 2 ) )->method( 'add_meta_data' );
 		$order->expects( $this->once() )->method( 'save' );
 
-		$_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] = 'customer-user';
+		$_POST['venmo_customer_venmo_username'] = 'customer-user';
 
 		\WP_Mock::userFunction( 'esc_attr' )->andReturn( 'customer-user' );
 
@@ -196,7 +198,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 		$data = array( 'payment_method' => 'venmo' );
 		$gateway->save_order_payment_type_meta_data( $order, $data );
 
-		unset( $_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] );
+		unset( $_POST['venmo_customer_venmo_username'] );
 	}
 
 	/**
@@ -215,7 +217,7 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 		$order->expects( $this->exactly( 2 ) )->method( 'add_meta_data' );
 		$order->expects( $this->once() )->method( 'save' );
 
-		$_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] = 'guest-user';
+		$_POST['venmo_customer_venmo_username'] = 'guest-user';
 
 		\WP_Mock::userFunction( 'esc_attr' )->andReturn( 'guest-user' );
 		\WP_Mock::userFunction( 'is_ssl' )->andReturn( false );
@@ -235,9 +237,70 @@ class Venmo_Gateway_Username_Test extends Unit_TestCase {
 		$data = array( 'payment_method' => 'venmo' );
 		$gateway->save_order_payment_type_meta_data( $order, $data );
 
-		unset( $_POST[ Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY ] );
+		unset( $_POST['venmo_customer_venmo_username'] );
 
 		// If we got here without errors, the guest path was executed.
 		$this->assertTrue( true );
+	}
+
+	/**
+	 * Each gateway instance's field name includes its id, so a duplicate's field (e.g. created with Duplicate Payment
+	 * Gateways) does not collide with the original's in the shortcode checkout form.
+	 *
+	 * @covers ::get_customer_venmo_username_field_name
+	 */
+	public function test_customer_venmo_username_field_name_includes_gateway_id(): void {
+		$gateway     = $this->create_gateway_mock();
+		$gateway->id = 'venmo_2';
+
+		$this->assertEquals( 'venmo_2_customer_venmo_username', $gateway->get_customer_venmo_username_field_name() );
+	}
+
+	/**
+	 * With two instances in the shortcode checkout, both fields are POSTed; only this instance's is used.
+	 *
+	 * @covers ::validate_fields
+	 */
+	public function test_validate_fields_uses_this_instances_field(): void {
+		$gateway     = $this->create_gateway_mock();
+		$gateway->id = 'venmo_2';
+
+		$_POST['venmo_customer_venmo_username']   = '';
+		$_POST['venmo_2_customer_venmo_username'] = 'myvenmo';
+
+		$result = $gateway->validate_fields();
+
+		unset( $_POST['venmo_customer_venmo_username'], $_POST['venmo_2_customer_venmo_username'] );
+
+		$this->assertTrue( $result );
+	}
+
+	/**
+	 * @covers ::save_order_payment_type_meta_data
+	 */
+	public function test_save_order_payment_type_meta_data_uses_this_instances_field(): void {
+		$gateway     = $this->create_gateway_mock( array( 'get_option' ) );
+		$gateway->id = 'venmo_2';
+		$gateway->method( 'get_option' )
+			->with( 'store_venmo_username' )
+			->willReturn( 'store-user' );
+
+		$order = $this->createMock( WC_Order::class );
+		$order->method( 'get_customer_id' )->willReturn( 123 );
+		$order->expects( $this->exactly( 2 ) )->method( 'add_meta_data' );
+
+		$_POST['venmo_customer_venmo_username']   = '';
+		$_POST['venmo_2_customer_venmo_username'] = 'customer-user';
+
+		\WP_Mock::passthruFunction( 'sanitize_text_field' );
+		\WP_Mock::passthruFunction( 'wp_unslash' );
+
+		\WP_Mock::userFunction( 'update_user_meta' )
+			->once()
+			->with( 123, Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY, 'customer-user' );
+
+		$gateway->save_order_payment_type_meta_data( $order, array( 'payment_method' => 'venmo_2' ) );
+
+		unset( $_POST['venmo_customer_venmo_username'], $_POST['venmo_2_customer_venmo_username'] );
 	}
 }

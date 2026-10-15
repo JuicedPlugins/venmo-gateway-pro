@@ -7,6 +7,8 @@
 
 namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
+use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
+use Throwable;
 use WC_Order;
 use WC_Payment_Gateway;
 use WC_Payment_Gateways;
@@ -32,6 +34,37 @@ class Payment_Gateways {
 		$gateways[] = Venmo_Gateway::class;
 
 		return $gateways;
+	}
+
+	/**
+	 * Register a blocks checkout integration for each Venmo gateway instance, e.g. the original and duplicates
+	 * created with Duplicate Payment Gateways, each under its own gateway id.
+	 *
+	 * @hooked woocommerce_blocks_payment_method_type_registration
+	 * @see \Automattic\WooCommerce\Blocks\Payments\Api::initialize_payment_method_types()
+	 *
+	 * @param PaymentMethodRegistry $payment_method_registry The blocks checkout's payment methods.
+	 */
+	public function register_blocks_checkout_support( PaymentMethodRegistry $payment_method_registry ): void {
+
+		foreach ( WC_Payment_Gateways::instance()->payment_gateways() as $gateway ) {
+
+			if ( ! ( $gateway instanceof Venmo_Gateway ) ) {
+				continue;
+			}
+
+			// E.g. already registered by Duplicate Payment Gateways.
+			if ( $payment_method_registry->is_registered( $gateway->id ) ) {
+				continue;
+			}
+
+			try {
+				$payment_method_registry->register( new Venmo_Gateway_Blocks_Checkout_Support( $gateway ) );
+			} catch ( Throwable $exception ) {
+				// Do not break the blocks checkout for the other payment methods.
+				continue;
+			}
+		}
 	}
 
 	/**

@@ -66,6 +66,10 @@ fi
 echo "Configuring Venmo payment gateway..."
 wp option set woocommerce_venmo_settings '{"enabled":"yes","title":"Venmo","description":"Pay with Venmo","store_venmo_username":"testvendor"}' --format=json 2>/dev/null || true
 
+# A second Venmo gateway instance, as Duplicate Payment Gateways creates. The development plugin only makes it
+# available to browsers with the `venmo_second_instance` cookie, so it does not appear in other tests.
+wp option set woocommerce_venmo_second_settings '{"enabled":"yes","title":"Venmo by phone","description":"Second Venmo instance","store_venmo_username":"secondvendor"}' --format=json 2>/dev/null || true
+
 # Create a simple product for checkout testing.
 if ! wp post list --post_type=product --field=post_title 2>/dev/null | grep -q "Test Product"; then
   echo "Creating test product..."
