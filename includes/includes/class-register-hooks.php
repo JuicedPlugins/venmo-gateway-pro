@@ -20,7 +20,6 @@ use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Features;
 use JuicedPlugins\Venmo_Gateway_Pro\Psr\Log\LoggerInterface;
 use JuicedPlugins\Venmo_Gateway_Pro\Upgrade\Upgrader;
 use JuicedPlugins\Venmo_Gateway_Pro\Upgrade\V430;
-use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Admin_Order_UI;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Email;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Order;
@@ -32,8 +31,6 @@ use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Donor_Venmo_Profile as G
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Donations_List as GiveWP_Donations_List;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Gateway_Settings as GiveWP_Gateway_Settings;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\GiveWP;
-use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Venmo_Gateway;
-use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Venmo_Gateway_Blocks_Checkout_Support;
 
 /**
  * `add_action()` and `add_filter()` for the plugin.
@@ -143,18 +140,8 @@ class Register_Hooks {
 		// Display payment instructions on thank you page.
 		add_filter( 'woocommerce_thankyou_order_received_text', array( $thank_you, 'print_instructions' ), 10, 2 );
 
-		// Register Venmo gateway with WooCommerce Blocks checkout.
-		add_action(
-			'woocommerce_blocks_payment_method_type_registration',
-			function ( PaymentMethodRegistry $payment_method_registry ): void {
-				$gateways = \WC_Payment_Gateways::instance()->payment_gateways();
-				if ( isset( $gateways['venmo'] ) && $gateways['venmo'] instanceof Venmo_Gateway ) {
-					$payment_method_registry->register(
-						new Venmo_Gateway_Blocks_Checkout_Support( $gateways['venmo'] )
-					);
-				}
-			}
-		);
+		// Register each Venmo gateway instance (the original and any duplicates) with WooCommerce Blocks checkout.
+		add_action( 'woocommerce_blocks_payment_method_type_registration', array( $payment_gateways, 'register_blocks_checkout_support' ) );
 
 		$email = new Email();
 		// Add payment link and instructions to the customer emails.

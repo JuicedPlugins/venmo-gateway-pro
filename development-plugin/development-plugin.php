@@ -56,6 +56,9 @@ new First_Run_Wizards()->register_hooks();
 ( new WooCommerce_Order() )->register_hooks();
 ( new Reconciliation_Email_Metabox() )->register_hooks();
 
+// A second Venmo gateway instance, as Duplicate Payment Gateways creates.
+( new Gateways\Second_Venmo_Gateway_Registration() )->register_hooks();
+
 // New REST endpoints.
 ( new Action_Scheduler() )->register_hooks();
 ( new Give_Donations() )->register_hooks();
