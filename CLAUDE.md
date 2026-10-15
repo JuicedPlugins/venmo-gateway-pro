@@ -11,4 +11,5 @@
 * methods that are hooked to WordPress actions and filters should have PhpDoc `@hooked` annotation with the name and `@see` annotation linking to the call site
 * Prefer Mockery in unit tests.
 * API methods should return simple objects and not arrays unless the array is a simple list of items
+* Protect against crashes by catching exceptions at interface points with WordPress
 * 
