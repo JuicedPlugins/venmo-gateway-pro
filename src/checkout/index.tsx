@@ -26,6 +26,7 @@ interface VenmoGatewaySettings {
 	supports?: string[];
 	venmo_icon_url?: string;
 	saved_venmo_username?: string;
+	customer_venmo_username_field_name?: string;
 }
 
 interface PaymentMethodLabelProps {
@@ -138,7 +139,9 @@ const VenmoContent: React.FC<
 				type: emitResponse.responseTypes.SUCCESS,
 				meta: {
 					paymentMethodData: {
-						_customer_venmo_username: venmoUsername.trim(),
+						[ settings.customer_venmo_username_field_name ||
+						`${ name }_customer_venmo_username` ]:
+							venmoUsername.trim(),
 					},
 				},
 			};

@@ -106,7 +106,7 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 	 *
 	 * @used-by PaymentMethodRegistry::get_all_registered_script_data()
 	 *
-	 * @return array{title:string, description:string, supports:array<string>, venmo_icon_url:string, saved_venmo_username:string, is_venmo_gateway:true}
+	 * @return array{title:string, description:string, supports:array<string>, venmo_icon_url:string, saved_venmo_username:string, customer_venmo_username_field_name:string, is_venmo_gateway:true}
 	 */
 	public function get_payment_method_data(): array {
 		// Get saved Venmo username for auto-fill.
@@ -114,12 +114,14 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 		$saved_venmo_username = $this->gateway->get_saved_venmo_username( $customer_id );
 
 		return array(
-			'title'                => $this->get_setting( 'title' ),
-			'description'          => $this->get_setting( 'description' ),
-			'supports'             => array_filter( $this->gateway->supports, array( $this->gateway, 'supports' ) ),
-			'venmo_icon_url'       => $this->gateway->icon,
-			'saved_venmo_username' => $saved_venmo_username,
-			'is_venmo_gateway'     => true,
+			'title'                              => $this->get_setting( 'title' ),
+			'description'                        => $this->get_setting( 'description' ),
+			'supports'                           => array_filter( $this->gateway->supports, array( $this->gateway, 'supports' ) ),
+			'venmo_icon_url'                     => $this->gateway->icon,
+			'saved_venmo_username'               => $saved_venmo_username,
+			// The payment data key, which `Venmo_Gateway::validate_fields()` reads from `$_POST`.
+			'customer_venmo_username_field_name' => $this->gateway->get_customer_venmo_username_field_name(),
+			'is_venmo_gateway'                   => true,
 		);
 	}
 }
