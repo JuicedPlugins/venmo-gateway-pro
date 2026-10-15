@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP;
 
+use JuicedPlugins\Venmo_Gateway_Pro\Meta_Keys;
 use JuicedPlugins\Venmo_Gateway_Pro\Venmo_Username;
 use JuicedPlugins\Venmo_Gateway_Pro\Includes\Cron;
 use Give\Donations\Models\Donation;
@@ -24,10 +25,10 @@ class Venmo_Gateway extends PaymentGateway {
 
 	const GATEWAY_ID = 'venmo';
 
-	const CUSTOMER_VENMO_USERNAME_META_KEY = '_customer_venmo_username';
-	const STORE_VENMO_USERNAME_META_KEY    = '_destination_account_venmo_username';
-	const VENMO_TRANSACTION_ID_META_KEY    = '_venmo_transaction_id';
-	const VENMO_PAYMENT_DATE_META_KEY      = '_venmo_payment_date';
+	const CUSTOMER_VENMO_USERNAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_USERNAME_META_KEY;
+	const STORE_VENMO_USERNAME_META_KEY    = Meta_Keys::STORE_VENMO_USERNAME_META_KEY;
+	const VENMO_TRANSACTION_ID_META_KEY    = Meta_Keys::VENMO_TRANSACTION_ID_META_KEY;
+	const VENMO_PAYMENT_DATE_META_KEY      = Meta_Keys::VENMO_PAYMENT_DATE_META_KEY;
 
 	/**
 	 * Donation meta key for the donor's full name as shown on their public Venmo profile, fetched in the
@@ -35,7 +36,7 @@ class Venmo_Gateway extends PaymentGateway {
 	 *
 	 * @see Donor_Venmo_Profile::fetch_donor_venmo_profile()
 	 */
-	const CUSTOMER_VENMO_DISPLAY_NAME_META_KEY = '_customer_venmo_display_name';
+	const CUSTOMER_VENMO_DISPLAY_NAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_DISPLAY_NAME_META_KEY;
 
 	/**
 	 * @see PaymentGateway::id()

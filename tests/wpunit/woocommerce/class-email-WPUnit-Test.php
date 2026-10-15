@@ -15,6 +15,7 @@ use WC_Payment_Gateways;
 
 /**
  * @coversDefaultClass \JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Email
+ * @requires function WC
  */
 class Email_WPUnit_Test extends WPUnit_Testcase {
 

@@ -96,6 +96,12 @@ class Order {
 	 */
 	public function fetch_customer_venmo_profile( int $order_id ): void {
 
+		// The event can still be scheduled after WooCommerce is deactivated.
+		if ( ! function_exists( 'wc_get_order' ) ) {
+			$this->logger->warning( 'WooCommerce is inactive when fetching customer Venmo profile for order ' . $order_id . '.', array( 'order_id' => $order_id ) );
+			return;
+		}
+
 		$order = wc_get_order( $order_id );
 
 		if ( ! ( $order instanceof WC_Order ) ) {

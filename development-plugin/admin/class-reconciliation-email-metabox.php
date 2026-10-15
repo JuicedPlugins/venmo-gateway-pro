@@ -109,6 +109,10 @@ class Reconciliation_Email_Metabox {
 
 		check_admin_referer( self::ACTION . '_' . $order_id );
 
+		if ( ! function_exists( 'wc_get_order' ) ) {
+			wp_die( 'WooCommerce is not active.', '', array( 'response' => 400 ) );
+		}
+
 		$order = wc_get_order( $order_id );
 		if ( ! ( $order instanceof WC_Order ) ) {
 			wp_die( 'Order not found.', '', array( 'response' => 404 ) );

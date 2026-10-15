@@ -11,6 +11,7 @@ use WC_Order;
 
 /**
  * @coversDefaultClass \JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Venmo_Gateway
+ * @requires function WC
  */
 class Venmo_Gateway_WPUnit_Test extends WPUnit_Testcase {
 

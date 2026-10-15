@@ -13,6 +13,7 @@ use WC_Payment_Gateways;
 
 /**
  * @coversDefaultClass \JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Admin_Order_UI
+ * @requires function WC
  */
 class Admin_Order_UI_WPUnit_Test extends WPUnit_Testcase {
 

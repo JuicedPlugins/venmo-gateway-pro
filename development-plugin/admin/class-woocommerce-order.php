@@ -55,13 +55,15 @@ class WooCommerce_Order {
 	public function order_link(): void {
 
 		$order_id = $this->get_woocommerce_admin_order_page_order_id();
-		if ( ! $order_id ) {
+		if ( ! $order_id || ! function_exists( 'wc_get_order' ) ) {
 			return;
 		}
 
-		/** @var WC_Order $wc_order */
 		$wc_order = wc_get_order( $order_id );
-		$link     = $wc_order->get_checkout_order_received_url();
+		if ( ! ( $wc_order instanceof WC_Order ) ) {
+			return;
+		}
+		$link = $wc_order->get_checkout_order_received_url();
 
 		echo '<script>';
 		printf(

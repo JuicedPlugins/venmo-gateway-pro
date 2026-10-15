@@ -9,6 +9,7 @@ use JuicedPlugins\Venmo_Gateway_Pro\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interf
 use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\Email_Extract_Settings_Interface;
 use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\Email_Reconcile_Settings_Interface;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Venmo_Gateway;
+use JuicedPlugins\Venmo_Gateway_Pro\Meta_Keys;
 use JuicedPlugins\Venmo_Gateway_Pro\WP_Logger\Logger_Settings_Trait;
 use JuicedPlugins\Venmo_Gateway_Pro\WP_Logger\WooCommerce_Logger_Settings_Interface;
 use JuicedPlugins\Venmo_Gateway_Pro\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
@@ -149,7 +150,7 @@ class Settings implements Settings_Interface, WooCommerce_Logger_Settings_Interf
 	 * Tell the IMAP reconcile how to find the customers' Venmo usernames.
 	 */
 	public function get_customer_payment_id_meta_key(): ?string {
-		return Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY;
+		return Meta_Keys::CUSTOMER_VENMO_USERNAME_META_KEY;
 	}
 
 	/**

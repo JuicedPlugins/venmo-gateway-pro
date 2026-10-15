@@ -15,6 +15,7 @@ use WC_Order;
 
 /**
  * @coversDefaultClass \JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Admin_Order_UI
+ * @requires function WC
  */
 class Admin_Order_UI_Integration_Test extends WPUnit_Testcase {
 

@@ -9,6 +9,7 @@ use Codeception\Stub\Expected;
 
 /**
  * @coversDefaultClass \JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Features
+ * @requires function WC
  */
 class Features_WPUnit_Test extends WPUnit_Testcase {
 
