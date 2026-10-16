@@ -3,24 +3,24 @@
  * Builds a realistic Venmo "paid you" email for an order and stores it in the plugin's mailbox,
  * as though it had been received via the REST ingress endpoint.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
 declare(strict_types=1);
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Development_Plugin\API;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Development_Plugin\API;
 
-use BrianHenryIE\WP_Venmo_Gateway\API\Settings;
+use JuicedPlugins\Venmo_Gateway_Pro\API\Settings;
 use Exception;
 use WC_Order;
 use WP_REST_Request;
 
 /**
- * Uses `tests/_data/John Doe paid you $46.00.eml` as a template, substituting the order's customer name,
+ * Uses `development-plugin/data/John Doe paid you $46.00.eml` as a template, substituting the order's customer name,
  * total and order number, then POSTs it to the mailbox library's REST ingress endpoint, exactly as the
  * Cloudflare Email Routing worker does for real emails.
  *
- * @see \BrianHenryIE\WP_Venmo_Gateway\WP_Mailboxes\Connections\Rest\REST_Ingress_Connection::create_new_email()
+ * @see \JuicedPlugins\Venmo_Gateway_Pro\WP_Mailboxes\Connections\Rest\REST_Ingress_Connection::create_new_email()
  */
 class Venmo_Payment_Email {
 
@@ -33,9 +33,10 @@ class Venmo_Payment_Email {
 	const TEMPLATE_TRANSACTION_ID = '4673461554100496023';
 
 	/**
-	 * The template email, relative to the main plugin's directory.
+	 * The template email, relative to the development plugin's directory. It ships with the development
+	 * plugin (not under `tests/`, which .distignore excludes from the main plugin's zip).
 	 */
-	const TEMPLATE_PATH = 'tests/_data/John Doe paid you $46.00.eml';
+	const TEMPLATE_PATH = 'data/John Doe paid you $46.00.eml';
 
 	/**
 	 * The plugin settings, which provide the REST namespace and emails CPT name the ingress route is built from.
@@ -133,7 +134,7 @@ class Venmo_Payment_Email {
 	 */
 	public function build_mime_for_order( WC_Order $order ): string {
 
-		$template_path = WP_PLUGIN_DIR . '/' . dirname( constant( 'BH_WP_VENMO_GATEWAY_BASENAME' ) ) . '/' . self::TEMPLATE_PATH;
+		$template_path = dirname( __DIR__ ) . '/' . self::TEMPLATE_PATH;
 
 		$raw_mime = file_get_contents( $template_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		if ( false === $raw_mime ) {

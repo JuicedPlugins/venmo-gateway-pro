@@ -1,17 +1,18 @@
 <?php
 /**
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
-use BrianHenryIE\WP_Venmo_Gateway\Psr\Log\LogLevel;
-use BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\API\Email_Reconciler;
-use BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\Integrations\WooCommerce\Credentials_Settings_Fields;
-use BrianHenryIE\WP_Venmo_Gateway\API\Settings;
-use BrianHenryIE\WP_Venmo_Gateway\API\Settings_Interface;
-use BrianHenryIE\WP_Venmo_Gateway\Venmo_Username;
+use JuicedPlugins\Venmo_Gateway_Pro\Psr\Log\LogLevel;
+use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\API\Email_Reconciler;
+use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\Integrations\WooCommerce\Credentials_Settings_Fields;
+use JuicedPlugins\Venmo_Gateway_Pro\API\Settings;
+use JuicedPlugins\Venmo_Gateway_Pro\API\Settings_Interface;
+use JuicedPlugins\Venmo_Gateway_Pro\Venmo_Username;
+use JuicedPlugins\Venmo_Gateway_Pro\Meta_Keys;
 use WC_Order;
 use WC_Payment_Gateway;
 
@@ -28,13 +29,21 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 	public $title = 'Venmo';
 
-	// TODO: use all underscores. Requires an upgrade routine.
-	const CUSTOMER_VENMO_USERNAME_META_KEY = '_customer-venmo-username';
+	const CUSTOMER_VENMO_USERNAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_USERNAME_META_KEY;
 
 	/**
 	 * The settings.store_venmo_username is saved to this order meta to know where we told the customer to pay.
 	 */
-	const STORE_VENMO_USERNAME_META_KEY = '_destination-account-venmo-username';
+	const STORE_VENMO_USERNAME_META_KEY = Meta_Keys::STORE_VENMO_USERNAME_META_KEY;
+
+	/**
+	 * Order meta key for the customer's full name as shown on their public Venmo profile, fetched in the
+	 * background after checkout. Venmo's payment emails name the payer, not their username, so this is
+	 * what a payment email can be matched against.
+	 *
+	 * @see Order::fetch_customer_venmo_profile()
+	 */
+	const CUSTOMER_VENMO_DISPLAY_NAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_DISPLAY_NAME_META_KEY;
 
 	/**
 	 * @var Settings_Interface
@@ -45,7 +54,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		$this->plugin_settings = new Settings();
 
-		$this->icon = plugins_url( 'assets/woocommerce/images/venmo-logo-25.png', 'bh-wp-venmo-gateway/bh-wp-venmo-gateway.php' );
+		$this->icon = plugins_url( 'assets/woocommerce/images/venmo-logo-25.png', 'juiced-venmo-gateway-pro/juiced-venmo-gateway-pro.php' );
 
 		$this->has_fields = true;
 
@@ -62,7 +71,8 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		$this->description = $this->get_option( 'description' );
 
-		// Save the wp-admin configuration form options. /** @phpstan-ignore return.void  */
+		// Save the wp-admin configuration form options.
+		/** @phpstan-ignore return.void  */
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
 		// Save the customer Venmo username to the order meta as the order is created (shortcode checkout).
@@ -97,31 +107,31 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		$form_fields = array(
 			'enabled'              => array(
-				'title'       => __( 'Enable/Disable', 'bh-wp-venmo-gateway' ),
+				'title'       => __( 'Enable/Disable', 'juiced-venmo-gateway-pro' ),
 				'type'        => 'checkbox',
-				'label'       => __( 'Enable This Gateway', 'bh-wp-venmo-gateway' ),
+				'label'       => __( 'Enable This Gateway', 'juiced-venmo-gateway-pro' ),
 				'default'     => 'yes',
-				'description' => '<a href="' . esc_url( $awaiting_payment_orders_url ) . '">' . __( 'View orders awaiting Venmo payment', 'bh-wp-venmo-gateway' ) . '</a>',
+				'description' => '<a href="' . esc_url( $awaiting_payment_orders_url ) . '">' . __( 'View orders awaiting Venmo payment', 'juiced-venmo-gateway-pro' ) . '</a>',
 				'desc_tip'    => false,
 			),
 			'title'                => array(
-				'title'       => __( 'Title', 'bh-wp-venmo-gateway' ),
+				'title'       => __( 'Title', 'juiced-venmo-gateway-pro' ),
 				'type'        => 'text',
-				'description' => __( 'This controls the title which the user sees during checkout.', 'bh-wp-venmo-gateway' ),
-				'default'     => _x( 'Venmo', 'Method description here', 'bh-wp-venmo-gateway' ),
+				'description' => __( 'This controls the title which the user sees during checkout.', 'juiced-venmo-gateway-pro' ),
+				'default'     => _x( 'Venmo', 'Method description here', 'juiced-venmo-gateway-pro' ),
 				'desc_tip'    => true,
 			),
 			'description'          => array(
-				'title'       => __( 'Description', 'bh-wp-venmo-gateway' ),
+				'title'       => __( 'Description', 'juiced-venmo-gateway-pro' ),
 				'type'        => 'text',
-				'description' => __( 'Payment method description that the customer will see on your checkout.', 'bh-wp-venmo-gateway' ) . " {$store_venmo_username_description}",
+				'description' => __( 'Payment method description that the customer will see on your checkout.', 'juiced-venmo-gateway-pro' ) . " {$store_venmo_username_description}",
 				'default'     => 'Use the Venmo app to pay for your order.',
 				'desc_tip'    => true,
 			),
 			'store_venmo_username' => array(
-				'title'       => __( 'Venmo Username', 'bh-wp-venmo-gateway' ),
+				'title'       => __( 'Venmo Username', 'juiced-venmo-gateway-pro' ),
 				'type'        => 'text',
-				'description' => __( 'The venmo username whose account the customer will be instructed to pay.', 'bh-wp-venmo-gateway' ),
+				'description' => __( 'The venmo username whose account the customer will be instructed to pay.', 'juiced-venmo-gateway-pro' ),
 				'desc_tip'    => false,
 			),
 		);
@@ -133,8 +143,8 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		/**
 		 * The gateway's log level is shared with the entire plugin.
-		 * When the gateway's settings are saved, the value is synced to `bh_wp_venmo_gateway_log_level`.
-		 * When the gateway's settings are loaded, the value is overwritten by `bh_wp_venmo_gateway_log_level`
+		 * When the gateway's settings are saved, the value is synced to `juiced_venmo_gateway_pro_log_level`.
+		 * When the gateway's settings are loaded, the value is overwritten by `juiced_venmo_gateway_pro_log_level`
 		 *
 		 * @see self::update_plugin_log_level_on_settings_save()
 		 * @see self::init_settings()
@@ -147,12 +157,12 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 		unset( $log_levels, $log_level );
 
 		$form_fields['log_level'] = array(
-			'title'       => __( 'Log Level', 'bh-wp-venmo-gateway' ),
-			'label'       => __( 'Enable Logging', 'bh-wp-venmo-gateway' ),
+			'title'       => __( 'Log Level', 'juiced-venmo-gateway-pro' ),
+			'label'       => __( 'Enable Logging', 'juiced-venmo-gateway-pro' ),
 			'type'        => 'select',
 			'options'     => $log_levels_option,
 			// TODO: if there is more than one instance, display a note saying "log level is common the the plugin not this specific instance".
-			'description' => __( 'Increasingly detailed levels of logs. ', 'bh-wp-venmo-gateway' ) . '<a href="' . admin_url( 'admin.php?page=bh-wp-venmo-gateway-logs' ) . '">View Logs</a>',
+			'description' => __( 'Increasingly detailed levels of logs. ', 'juiced-venmo-gateway-pro' ) . '<a href="' . admin_url( 'admin.php?page=juiced-venmo-gateway-pro-logs' ) . '">View Logs</a>',
 			'desc_tip'    => false,
 			'default'     => 'notice',
 			'id'          => 'log_level',
@@ -169,7 +179,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	public function init_settings() {
 		parent::init_settings();
 		$log_levels = array( 'none', LogLevel::ERROR, LogLevel::WARNING, LogLevel::NOTICE, LogLevel::INFO, LogLevel::DEBUG );
-		$log_level  = get_option( 'bh_wp_venmo_gateway_log_level', $this->settings['log_level'] ?? 'notice' );
+		$log_level  = get_option( 'juiced_venmo_gateway_pro_log_level', $this->settings['log_level'] ?? 'notice' );
 
 		if ( ! in_array( $log_level, $log_levels, true ) ) {
 			$log_level = 'notice';
@@ -198,7 +208,21 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 			return;
 		}
 
-		update_option( 'bh_wp_venmo_gateway_log_level', $value['log_level'] );
+		update_option( 'juiced_venmo_gateway_pro_log_level', $value['log_level'] );
+	}
+
+	/**
+	 * The name of the checkout field for the customer's Venmo username, e.g. `venmo_customer_venmo_username`.
+	 *
+	 * It includes the gateway id, so each gateway instance (e.g. duplicates created with Duplicate Payment Gateways)
+	 * has its own field in the shortcode checkout form. The blocks checkout sends it as payment data, which WooCommerce
+	 * sets as `$_POST` for `validate_fields()`.
+	 *
+	 * @see \Automattic\WooCommerce\StoreApi\Legacy::process_legacy_payment()
+	 * @see Venmo_Gateway_Blocks_Checkout_Support::get_payment_method_data()
+	 */
+	public function get_customer_venmo_username_field_name(): string {
+		return $this->id . self::CUSTOMER_VENMO_USERNAME_META_KEY;
 	}
 
 	/**
@@ -210,12 +234,12 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 		// This just prints the description.
 		parent::payment_fields();
 
-		// Pre-populate with saved Venmo username
+		// Pre-populate with saved Venmo username.
 		$customer_id = get_current_user_id();
 		$value       = $this->get_saved_venmo_username( $customer_id );
 
 		woocommerce_form_field(
-			self::CUSTOMER_VENMO_USERNAME_META_KEY,
+			$this->get_customer_venmo_username_field_name(),
 			array(
 				'label'       => 'Enter your Venmo username:',
 				'placeholder' => 'Venmo username',
@@ -225,7 +249,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 			$value
 		);
 
-		// Add JavaScript for focusing the field when Venmo is selected
+		// Add JavaScript for focusing the field when Venmo is selected.
 		$this->add_checkout_focus_script();
 	}
 
@@ -236,8 +260,8 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 */
 	public function validate_fields(): bool {
 		// @phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! isset( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) || empty( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) ) {
-			wc_add_notice( __( 'Please enter your Venmo username.', 'bh-wp-venmo-gateway' ), 'error' );
+		if ( empty( $_POST[ $this->get_customer_venmo_username_field_name() ] ) ) {
+			wc_add_notice( __( 'Please enter your Venmo username.', 'juiced-venmo-gateway-pro' ), 'error' );
 			return false;
 		}
 
@@ -253,16 +277,20 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 * @see WC_Checkout::create_order()
 	 * @see WC_Checkout::get_posted_data()
 	 *
-	 * @param WC_Order $order The newly created WooCommerce order
+	 * @param WC_Order $order The newly created WooCommerce order.
 	 * @param string[] $data
 	 */
 	public function save_order_payment_type_meta_data( WC_Order $order, array $data ): void {
 
-		if ( $data['payment_method'] !== $this->id || ! isset( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) ) {
+		// Ignore-because: we're not processing data here.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( $data['payment_method'] !== $this->id || ! isset( $_POST[ $this->get_customer_venmo_username_field_name() ] ) ) {
 			return;
 		}
 
-		$customer_venmo_username = Venmo_Username::sanitize( esc_attr( $_POST[ self::CUSTOMER_VENMO_USERNAME_META_KEY ] ) );
+		// Ignore-because: this seems safe.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$customer_venmo_username = Venmo_Username::sanitize( sanitize_text_field( wp_unslash( $_POST[ $this->get_customer_venmo_username_field_name() ] ) ) );
 
 		// Save Venmo username to order meta.
 		$order->add_meta_data( self::CUSTOMER_VENMO_USERNAME_META_KEY, $customer_venmo_username, true );
@@ -314,7 +342,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		$customer_venmo_username = '';
 		foreach ( $payment_data as $item ) {
-			if ( isset( $item['key'] ) && self::CUSTOMER_VENMO_USERNAME_META_KEY === $item['key'] ) {
+			if ( isset( $item['key'] ) && $this->get_customer_venmo_username_field_name() === $item['key'] ) {
 				$customer_venmo_username = Venmo_Username::sanitize( sanitize_text_field( $item['value'] ) );
 				break;
 			}
@@ -361,8 +389,9 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 * On-Hold – Awaiting payment – stock is reduced, but you need to confirm payment.
 	 *
 	 * @see https://docs.woocommerce.com/document/managing-orders/
+	 * @see Legacy::process_legacy_payment()
 	 *
-	 * @param int $order_id
+	 * @param int $order_id The (newly?) created order object whose payment status is about to be determined.
 	 * @return string[]
 	 */
 	public function process_payment( $order_id ): array {
@@ -398,7 +427,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 
 		$order->update_status( 'on-hold', $note );
 
-		// Reduce stock levels
+		// Reduce stock levels.
 		wc_reduce_stock_levels( $order_id );
 
 		// Empty cart.
@@ -414,6 +443,8 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Output the gateway settings screen.
 	 *
+	 * TODO: verify this is used or even doing anything different to the parent.
+	 *
 	 * Overrides the parents.
 	 *
 	 * @see WC_Payment_Gateway::admin_options()
@@ -421,11 +452,15 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 */
 	public function admin_options(): void {
 		echo '<h2>' . esc_html( $this->get_method_title() );
+		// No need to provide our own translation when a correct one exists.
+		// phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 		wc_back_link( __( 'Return to payments', 'woocommerce' ), admin_url( 'admin.php?page=wc-settings&tab=checkout' ) );
 		echo '</h2>';
 		echo wp_kses_post( wpautop( $this->get_method_description() ) );
 
-		echo '<table class="form-table">' . $this->generate_settings_html( $this->get_form_fields(), false ) . '</table>'; // WPCS: XSS ok.
+		echo '<table class="form-table">';
+		$this->generate_settings_html( $this->get_form_fields(), true );
+		echo '</table>';
 	}
 
 	/**
@@ -491,6 +526,8 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 		}
 
 		// Don't format it on the gateway's page itself.
+		// Ignore-because: we're not actually processing data.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['tab'] ) && 'checkout' === $_GET['tab'] && ! isset( $_GET['section'] ) ) {
 			$method_title = "{$method_title} – <i>{$store_venmo_username}</i>";
 		} else {
@@ -509,7 +546,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Return the description for admin screens.
 	 *
-	 * e.g. Description column of WooCommerce/Settings/Payments.
+	 * E.g. Description column of WooCommerce/Settings/Payments.
 	 *
 	 * Overrides:
 	 *
@@ -549,7 +586,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 * @return string The saved Venmo username or empty string.
 	 */
 	public function get_saved_venmo_username( ?int $customer_id = null ): string {
-		// Try user meta if logged in
+		// Try user meta if logged in.
 		if ( $customer_id > 0 ) {
 			$username = get_user_meta( $customer_id, self::CUSTOMER_VENMO_USERNAME_META_KEY, true );
 			if ( ! empty( $username ) ) {
@@ -557,12 +594,12 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 			}
 		}
 
-		// Try cookie for guests
-		if ( isset( $_COOKIE['venmo_username'] ) && ! empty( $_COOKIE['venmo_username'] ) ) {
-			return sanitize_text_field( $_COOKIE['venmo_username'] );
+		// Try cookie for guests.
+		if ( isset( $_COOKIE['venmo_username'] ) && is_string( $_COOKIE['venmo_username'] ) && '' !== $_COOKIE['venmo_username'] ) {
+			return sanitize_text_field( wp_unslash( $_COOKIE['venmo_username'] ) );
 		}
 
-		// Fallback to previous order meta (if logged in)
+		// Fallback to previous order meta (if logged in).
 		if ( $customer_id > 0 ) {
 			/** @var WC_Order[] $orders */
 			$orders = wc_get_orders(
@@ -593,24 +630,28 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 		?>
 		<script type="text/javascript">
 		jQuery(document).ready(function($) {
+			// This gateway instance's id and username field, e.g. `venmo` and `#venmo_customer_venmo_username`.
+			var gatewayId = '<?php echo esc_js( $this->id ); ?>';
+			var usernameFieldSelector = '#<?php echo esc_js( $this->get_customer_venmo_username_field_name() ); ?>';
+
 			// Focus username field when Venmo payment method is selected
 			$(document.body).on('change', 'input[name="payment_method"]', function() {
-				if ($(this).val() === 'venmo') {
-					$('#<?php echo esc_js( self::CUSTOMER_VENMO_USERNAME_META_KEY ); ?>').focus();
+				if ($(this).val() === gatewayId) {
+					$(usernameFieldSelector).focus();
 				}
 			});
 
 			// If Venmo is already selected on page load, focus the field
-			if ($('input[name="payment_method"]:checked').val() === 'venmo') {
+			if ($('input[name="payment_method"]:checked').val() === gatewayId) {
 				setTimeout(function() {
-					$('#<?php echo esc_js( self::CUSTOMER_VENMO_USERNAME_META_KEY ); ?>').focus();
+					$(usernameFieldSelector).focus();
 				}, 100);
 			}
 
 			// Focus username field on validation error
 			$(document.body).on('checkout_error', function() {
-				if ($('input[name="payment_method"]:checked').val() === 'venmo') {
-					var $usernameField = $('#<?php echo esc_js( self::CUSTOMER_VENMO_USERNAME_META_KEY ); ?>');
+				if ($('input[name="payment_method"]:checked').val() === gatewayId) {
+					var $usernameField = $(usernameFieldSelector);
 					if ($usernameField.length && $usernameField.val() === '') {
 						$usernameField.focus();
 					}
@@ -629,7 +670,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 *
 	 * @see WC_Payment_Gateway::get_transaction_url()
 	 * @see \WC_Meta_Box_Order_Data::output()
-	 * @see \BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\API\Email_Reconciler::match_email_to_order()
+	 * @see \JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\API\Email_Reconciler::match_email_to_order()
 	 *
 	 * @param WC_Order $order The order.
 	 * @return string The transaction url, or empty string.
@@ -647,7 +688,7 @@ class Venmo_Gateway extends WC_Payment_Gateway {
 	 *
 	 * Matches the keys bh-wp-order-email-reconcile records on the order when its payment email is matched.
 	 *
-	 * @see \BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\API\Email_Reconciler::get_order_meta_key()
+	 * @see \JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\API\Email_Reconciler::get_order_meta_key()
 	 * @see Venmo_Gateway::get_transaction_url()
 	 *
 	 * Accidentally identical to {@see Email_Reconciler::get_order_meta_key()}.

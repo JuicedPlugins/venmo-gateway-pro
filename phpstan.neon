@@ -2,7 +2,7 @@ parameters:
     level: 8
     paths:
         - includes
-        - bh-wp-venmo-gateway.php
+        - juiced-venmo-gateway-pro.php
         - autoload.php
         - uninstall.php
         - tests
@@ -10,6 +10,7 @@ parameters:
     excludePaths:
 #        - build (?)
         - vendor-prefixed
+        - tests/_support/_generated/
     bootstrapFiles:
         - phpstanbootstrap.php
         - autoload.php

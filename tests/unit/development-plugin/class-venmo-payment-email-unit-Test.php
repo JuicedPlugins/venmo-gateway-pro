@@ -3,34 +3,26 @@
  * Unit tests for the development plugin's Venmo payment email builder: the MIME/quoted-printable
  * substitution of the order's details into the template email.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
 declare(strict_types=1);
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Development_Plugin\API;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Development_Plugin\API;
 
-use BrianHenryIE\WP_Venmo_Gateway\Unit_Testcase;
+use JuicedPlugins\Venmo_Gateway_Pro\Unit_Testcase;
 use WC_Order;
 
 require_once codecept_root_dir( 'development-plugin/api/class-created-email.php' );
 require_once codecept_root_dir( 'development-plugin/api/class-venmo-payment-email.php' );
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Venmo_Gateway\Development_Plugin\API\Venmo_Payment_Email
+ * @coversDefaultClass \JuicedPlugins\Venmo_Gateway_Pro\Development_Plugin\API\Venmo_Payment_Email
  */
 class Venmo_Payment_Email_Unit_Test extends Unit_Testcase {
 
 	protected function setup(): void {
 		parent::setup();
-
-		// The template path is built from these, as it would be in the running plugin.
-		if ( ! defined( 'WP_PLUGIN_DIR' ) ) {
-			define( 'WP_PLUGIN_DIR', dirname( codecept_root_dir() ) );
-		}
-		if ( ! defined( 'BH_WP_VENMO_GATEWAY_BASENAME' ) ) {
-			define( 'BH_WP_VENMO_GATEWAY_BASENAME', basename( codecept_root_dir() ) . '/bh-wp-venmo-gateway.php' );
-		}
 
 		\WP_Mock::userFunction( 'site_url' )->andReturn( 'https://example.org' );
 		\WP_Mock::userFunction( 'wp_parse_url' )->andReturnUsing( fn( string $url, int $component ) => parse_url( $url, $component ) );

@@ -2,10 +2,10 @@
 /**
  * AJAX endpoint to set WooCommerce customer billing and shipping data in the session.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Development_Plugin\Ajax;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Development_Plugin\Ajax;
 
 use WC_Customer;
 
@@ -47,7 +47,7 @@ class WooCommerce_Customer {
 		check_ajax_referer( 'e2e-set-customer-data', 'security' );
 
 		if ( ! function_exists( 'WC' ) ) {
-			wp_send_json_error( array( 'message' => 'WooCommerce not installed' ) );
+			wp_send_json_error( array( 'message' => 'WooCommerce not active' ) );
 			return;
 		}
 
@@ -131,6 +131,10 @@ class WooCommerce_Customer {
 	 */
 	public function ajax_add_to_cart(): void {
 		check_ajax_referer( 'e2e-add-to-cart', 'security' );
+
+		if ( ! function_exists( 'WC' ) ) {
+			wp_send_json_error( array( 'message' => 'WooCommerce not active' ) );
+		}
 
 		$product_name = isset( $_POST['product_name'] ) ? sanitize_text_field( wp_unslash( $_POST['product_name'] ) ) : '';
 		if ( empty( $product_name ) ) {

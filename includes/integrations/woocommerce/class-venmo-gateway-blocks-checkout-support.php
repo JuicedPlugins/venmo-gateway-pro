@@ -4,10 +4,13 @@
  *
  * Registers the gateway script and exposes settings data to the frontend.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * One is registered for each instance of the gateway, e.g. the original and duplicates created with
+ * Duplicate Payment Gateways, each under its gateway's id.
+ *
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
 use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
@@ -27,6 +30,8 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 	/**
 	 * Payment method name. Must match WC_Payment_Gateway::$id.
 	 *
+	 * @see Venmo_Gateway_Blocks_Checkout_Support::__construct()
+	 *
 	 * @var string
 	 */
 	protected $name = 'venmo';
@@ -34,10 +39,11 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 	/**
 	 * Constructor.
 	 *
-	 * @param Venmo_Gateway $gateway The Venmo gateway instance.
+	 * @param Venmo_Gateway $gateway The Venmo gateway instance, e.g. the original or a duplicate.
 	 */
 	public function __construct( Venmo_Gateway $gateway ) {
 		$this->gateway = $gateway;
+		$this->name    = $gateway->id;
 	}
 
 	/**
@@ -67,9 +73,9 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 	 */
 	public function get_payment_method_script_handles(): array {
 
-		$handle = 'bh-wp-venmo-gateway-blocks-checkout';
+		$handle = 'juiced-venmo-gateway-pro-blocks-checkout';
 
-		$script_asset_path = WP_PLUGIN_DIR . '/bh-wp-venmo-gateway/build/checkout/index.asset.php';
+		$script_asset_path = WP_PLUGIN_DIR . '/juiced-venmo-gateway-pro/build/checkout/index.asset.php';
 		$script_asset      = file_exists( $script_asset_path )
 			? require $script_asset_path
 			: array(
@@ -77,7 +83,8 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 				'version'      => '1.0.0',
 			);
 
-		$script_url = plugins_url( 'build/checkout/index.js', WP_PLUGIN_DIR . '/bh-wp-venmo-gateway/bh-wp-venmo-gateway.php' );
+		/** @var non-empty-string $script_url */
+		$script_url = plugins_url( 'build/checkout/index.js', WP_PLUGIN_DIR . '/juiced-venmo-gateway-pro/juiced-venmo-gateway-pro.php' );
 
 		wp_register_script(
 			$handle,
@@ -87,17 +94,19 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 			true
 		);
 
-		wp_set_script_translations( $handle, 'bh-wp-venmo-gateway' );
+		wp_set_script_translations( $handle, 'juiced-venmo-gateway-pro' );
 
 		return array( $handle );
 	}
 
 	/**
-	 * Returns data made available to the payment methods script via `getSetting('venmo_data')`.
+	 * Returns data made available to the payment methods script via `getSetting( 'paymentMethodData' )[ name ]`.
+	 *
+	 * `is_venmo_gateway` identifies each instance of the gateway, since there may be more than one.
 	 *
 	 * @used-by PaymentMethodRegistry::get_all_registered_script_data()
 	 *
-	 * @return array{title:string, description:string, supports:array<string>, venmo_icon_url:string, saved_venmo_username:string}
+	 * @return array{title:string, description:string, supports:array<string>, venmo_icon_url:string, saved_venmo_username:string, customer_venmo_username_field_name:string, is_venmo_gateway:true}
 	 */
 	public function get_payment_method_data(): array {
 		// Get saved Venmo username for auto-fill.
@@ -105,11 +114,14 @@ class Venmo_Gateway_Blocks_Checkout_Support extends AbstractPaymentMethodType {
 		$saved_venmo_username = $this->gateway->get_saved_venmo_username( $customer_id );
 
 		return array(
-			'title'                => $this->get_setting( 'title' ),
-			'description'          => $this->get_setting( 'description' ),
-			'supports'             => array_filter( $this->gateway->supports, array( $this->gateway, 'supports' ) ),
-			'venmo_icon_url'       => $this->gateway->icon,
-			'saved_venmo_username' => $saved_venmo_username,
+			'title'                              => $this->get_setting( 'title' ),
+			'description'                        => $this->get_setting( 'description' ),
+			'supports'                           => array_filter( $this->gateway->supports, array( $this->gateway, 'supports' ) ),
+			'venmo_icon_url'                     => $this->gateway->icon,
+			'saved_venmo_username'               => $saved_venmo_username,
+			// The payment data key, which `Venmo_Gateway::validate_fields()` reads from `$_POST`.
+			'customer_venmo_username_field_name' => $this->gateway->get_customer_venmo_username_field_name(),
+			'is_venmo_gateway'                   => true,
 		);
 	}
 }

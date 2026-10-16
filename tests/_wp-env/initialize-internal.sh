@@ -1,8 +1,25 @@
 #!/bin/bash
 
 PLUGIN_SLUG=$1;
+MODE=$2;
 # Print the script name.
 echo "Running " $(basename "$0") " for " $PLUGIN_SLUG;
+
+# The scripts are mapped one level above the webroot so they are not web-servable.
+SCRIPT_DIR="$(dirname "$0")"
+
+# In CI the plugin is not mounted from the working directory; install the zip
+# initialize-external.sh copied into the mapped setup directory. The filename carries the version,
+# so echoing it records exactly which build the tests ran against.
+if [ "$MODE" = "ci" ]; then
+  PLUGIN_ZIP=$(ls -t "$SCRIPT_DIR/$PLUGIN_SLUG".*.zip 2>/dev/null | head -n 1)
+  if [ -z "$PLUGIN_ZIP" ]; then
+    echo "No $PLUGIN_SLUG zip found in $SCRIPT_DIR" >&2
+    exit 1
+  fi
+  echo "Installing $PLUGIN_SLUG from $(basename "$PLUGIN_ZIP")"
+  wp plugin install "$PLUGIN_ZIP" --force --activate
+fi
 
 if [ ! -d /var/www/html/wp-content/uploads ]; then
   echo "mkdir /var/www/html/wp-content/uploads"
@@ -34,7 +51,6 @@ fi
 # Dedicated checkout pages — one per checkout style — so the shortcode and blocks
 # E2E specs never mutate a shared page and can run in parallel. The default
 # /checkout/ page (woocommerce_checkout_page_id) is left untouched.
-SCRIPT_DIR="$(dirname "$0")"
 if ! wp post list --post_type=page --field=post_name 2>/dev/null | grep -qx "checkout-shortcode"; then
   echo "Creating /checkout-shortcode/ page..."
   wp post create --post_type=page --post_title="Checkout (Shortcode)" --post_name="checkout-shortcode" \
@@ -49,6 +65,10 @@ fi
 # Enable Venmo gateway with a test username.
 echo "Configuring Venmo payment gateway..."
 wp option set woocommerce_venmo_settings '{"enabled":"yes","title":"Venmo","description":"Pay with Venmo","store_venmo_username":"testvendor"}' --format=json 2>/dev/null || true
+
+# A second Venmo gateway instance, as Duplicate Payment Gateways creates. The development plugin only makes it
+# available to browsers with the `venmo_second_instance` cookie, so it does not appear in other tests.
+wp option set woocommerce_venmo_second_settings '{"enabled":"yes","title":"Venmo by phone","description":"Second Venmo instance","store_venmo_username":"secondvendor"}' --format=json 2>/dev/null || true
 
 # Create a simple product for checkout testing.
 if ! wp post list --post_type=product --field=post_title 2>/dev/null | grep -q "Test Product"; then
@@ -101,6 +121,13 @@ wp option patch update give_settings venmo_store_username 'testvendor' 2>/dev/nu
 # renders a React donations list at the same URL that has no equivalent hook, so
 # the link would never appear. (mark-paid.spec.ts depends on this.)
 wp user meta update 1 _give_donations_archive_show_legacy 1 2>/dev/null || true
+
+# Non-administrator users for the roles e2e tests: WooCommerce shop manager and GiveWP manager, who can use the
+# payment emails, and a contributor, who cannot.
+wp user get shopmanager --field=ID >/dev/null 2>&1 || wp user create shopmanager shopmanager@example.com --role=shop_manager --user_pass=password --display_name="Shop Manager"
+wp user get givemanager --field=ID >/dev/null 2>&1 || wp user create givemanager givemanager@example.com --role=give_manager --user_pass=password --display_name="GiveWP Manager"
+wp user get contributor --field=ID >/dev/null 2>&1 || wp user create contributor contributor@example.com --role=contributor --user_pass=password --display_name="Contributor"
+
 
 # Create GiveWP demo pages (gives/history/etc.) for manual developer browsing.
 wp give test-demonstration-page 2>/dev/null || true

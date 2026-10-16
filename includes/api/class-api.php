@@ -1,15 +1,15 @@
 <?php
 /**
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\API;
+namespace JuicedPlugins\Venmo_Gateway_Pro\API;
 
-use BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\API\API as BH_WP_Order_Email_Reconcile;
-use BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\API\Unpaid_Orders_Provider_Interface;
-use BrianHenryIE\WP_Venmo_Gateway\Psr\Log\LoggerAwareTrait;
-use BrianHenryIE\WP_Venmo_Gateway\Psr\Log\LoggerInterface;
+use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\API\API as BH_WP_Order_Email_Reconcile;
+use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\API\Unpaid_Orders_Provider_Interface;
+use JuicedPlugins\Venmo_Gateway_Pro\Psr\Log\LoggerAwareTrait;
+use JuicedPlugins\Venmo_Gateway_Pro\Psr\Log\LoggerInterface;
 
 class API implements API_Interface {
 
@@ -46,5 +46,16 @@ class API implements API_Interface {
 	 */
 	public function get_unpaid_orders_provider(): Unpaid_Orders_Provider_Interface {
 		return $this->reconciler->get_unpaid_orders_provider();
+	}
+
+	/**
+	 * Fetch a customer's public Venmo profile from `https://venmo.com/u/{username}`.
+	 *
+	 * @see Venmo_Profile_Fetcher
+	 *
+	 * @param string $username The Venmo username, with or without a leading `@`.
+	 */
+	public function get_venmo_profile( string $username ): ?Venmo_Profile {
+		return ( new Venmo_Profile_Fetcher( $this->logger ) )->fetch( $username );
 	}
 }

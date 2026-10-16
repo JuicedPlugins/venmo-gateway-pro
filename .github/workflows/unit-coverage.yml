@@ -19,7 +19,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: bh_wp_venmo_gateway_tests
+          MYSQL_DATABASE: juiced_venmo_gateway_pro_tests
         ports:
           - 3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -65,9 +65,9 @@ jobs:
 
       - name: Update .env.testing config for GitHub Actions
         env:
-          PLUGIN_SLUG: ${{ github.event.repository.name }}
+          PLUGIN_SLUG: "juiced-venmo-gateway-pro"
         run: |
-          find . -depth \( -name '.env.testing' \) -exec sed -i "s/_DB_PORT=\"33066\"/_DB_PORT=\"${{ job.services.mysql.ports['3306'] }}\"/g" {} +
+          find . -depth \( -name '.env.testing' \) -exec sed -i "s/_DB_PORT=\"33060\"/_DB_PORT=\"${{ job.services.mysql.ports['3306'] }}\"/g" {} +
 
       - name: Read .env.testing
         uses: c-py/action-dotenv-to-setenv@v5
@@ -88,14 +88,7 @@ jobs:
 #          ' composer.json > composer.json.tmp
 #          mv composer.json.tmp composer.json
 
-      # TODO: on merge to main, the workflow should commit the updated composer.json.
-
-      - name: Install PHP dependencies
-        if: ${{ github.event_name == 'pull_request' }}
-        run: composer update --verbose
-
       - name: Install PHP dependencies (using update)
-        if: ${{ github.event_name != 'pull_request' }}
         run: composer install --verbose
 
       - name: Install php-codecoverage-markdown for markdown report generation
@@ -194,12 +187,14 @@ jobs:
         with:
           repository: gh-pages
           branch: gh-pages
+          before_add_hook: 'git pull --rebase origin gh-pages'
           commit_message: "🤖 Commit code coverage to gh-pages"
 
       - name: Commit code coverage badge to master/main
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION && github.ref == 'refs/heads/master' }}
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
+          before_add_hook: 'git pull'
           file_pattern: .github/coverage.svg
           commit_message: "🤖 Commit code coverage badge"
 

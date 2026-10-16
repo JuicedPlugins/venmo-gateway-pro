@@ -1,13 +1,15 @@
 <?php
 /**
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
 declare(strict_types=1);
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Integrations\GiveWP;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP;
 
-use BrianHenryIE\WP_Venmo_Gateway\Venmo_Username;
+use JuicedPlugins\Venmo_Gateway_Pro\Meta_Keys;
+use JuicedPlugins\Venmo_Gateway_Pro\Venmo_Username;
+use JuicedPlugins\Venmo_Gateway_Pro\Includes\Cron;
 use Give\Donations\Models\Donation;
 use Give\Framework\PaymentGateways\Commands\PaymentPending;
 use Give\Framework\PaymentGateways\PaymentGateway;
@@ -23,10 +25,18 @@ class Venmo_Gateway extends PaymentGateway {
 
 	const GATEWAY_ID = 'venmo';
 
-	const CUSTOMER_VENMO_USERNAME_META_KEY = '_customer-venmo-username';
-	const STORE_VENMO_USERNAME_META_KEY    = '_destination-account-venmo-username';
-	const VENMO_TRANSACTION_ID_META_KEY    = '_venmo-transaction-id';
-	const VENMO_PAYMENT_DATE_META_KEY      = '_venmo-payment-date';
+	const CUSTOMER_VENMO_USERNAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_USERNAME_META_KEY;
+	const STORE_VENMO_USERNAME_META_KEY    = Meta_Keys::STORE_VENMO_USERNAME_META_KEY;
+	const VENMO_TRANSACTION_ID_META_KEY    = Meta_Keys::VENMO_TRANSACTION_ID_META_KEY;
+	const VENMO_PAYMENT_DATE_META_KEY      = Meta_Keys::VENMO_PAYMENT_DATE_META_KEY;
+
+	/**
+	 * Donation meta key for the donor's full name as shown on their public Venmo profile, fetched in the
+	 * background after the donation is created. Venmo's payment emails name the payer, not their username.
+	 *
+	 * @see Donor_Venmo_Profile::fetch_donor_venmo_profile()
+	 */
+	const CUSTOMER_VENMO_DISPLAY_NAME_META_KEY = Meta_Keys::CUSTOMER_VENMO_DISPLAY_NAME_META_KEY;
 
 	/**
 	 * @see PaymentGateway::id()
@@ -49,7 +59,7 @@ class Venmo_Gateway extends PaymentGateway {
 	 */
 	#[Override]
 	public function getName(): string {
-		return __( 'Venmo', 'bh-wp-venmo-gateway' );
+		return __( 'Venmo', 'juiced-venmo-gateway-pro' );
 	}
 
 	/**
@@ -57,7 +67,7 @@ class Venmo_Gateway extends PaymentGateway {
 	 */
 	#[Override]
 	public function getPaymentMethodLabel(): string {
-		return __( 'Venmo', 'bh-wp-venmo-gateway' );
+		return __( 'Venmo', 'juiced-venmo-gateway-pro' );
 	}
 
 	/**
@@ -84,17 +94,17 @@ class Venmo_Gateway extends PaymentGateway {
 	 */
 	#[Override]
 	public function enqueueScript( int $formId ): void {
-		$asset_file = plugin_dir_path( BH_WP_VENMO_GATEWAY_FILE ) . 'assets/givewp/venmo-gateway.asset.php';
+		$asset_file = plugin_dir_path( JUICED_VENMO_GATEWAY_PRO_FILE ) . 'assets/givewp/venmo-gateway.asset.php';
 		$asset      = file_exists( $asset_file )
 			? require $asset_file
 			: array(
 				'dependencies' => array( 'react' ),
-				'version'      => BH_WP_VENMO_GATEWAY_VERSION,
+				'version'      => JUICED_VENMO_GATEWAY_PRO_VERSION,
 			);
 
 		wp_enqueue_script(
-			'bh-wp-venmo-gateway-givewp',
-			plugins_url( 'assets/givewp/venmo-gateway.js', BH_WP_VENMO_GATEWAY_FILE ),
+			'juiced-venmo-gateway-pro-givewp',
+			plugins_url( 'assets/givewp/venmo-gateway.js', JUICED_VENMO_GATEWAY_PRO_FILE ),
 			$asset['dependencies'],
 			$asset['version'],
 			true
@@ -120,7 +130,7 @@ class Venmo_Gateway extends PaymentGateway {
 		<fieldset id="give-venmo-gateway-fields" class="give-venmo-gateway-fields">
 			<p class="form-row give-venmo-username-row">
 				<label class="give-label" for="give-venmo-username">
-					<?php esc_html_e( 'Your Venmo @username', 'bh-wp-venmo-gateway' ); ?>
+					<?php esc_html_e( 'Your Venmo @username', 'juiced-venmo-gateway-pro' ); ?>
 					<span class="give-required-indicator">*</span>
 				</label>
 				<input
@@ -128,7 +138,7 @@ class Venmo_Gateway extends PaymentGateway {
 					type="text"
 					name="venmo_username"
 					class="give-input required"
-					placeholder="<?php esc_attr_e( '@username', 'bh-wp-venmo-gateway' ); ?>"
+					placeholder="<?php esc_attr_e( '@username', 'juiced-venmo-gateway-pro' ); ?>"
 					required
 				>
 			</p>
@@ -137,7 +147,7 @@ class Venmo_Gateway extends PaymentGateway {
 					<?php
 					printf(
 						/* translators: %s: Venmo username with @ prefix */
-						esc_html__( 'After submitting, please send payment to %s on Venmo.', 'bh-wp-venmo-gateway' ),
+						esc_html__( 'After submitting, please send payment to %s on Venmo.', 'juiced-venmo-gateway-pro' ),
 						'<strong>' . esc_html( Venmo_Username::for_display( $store_username ) ) . '</strong>'
 					);
 					?>
@@ -169,6 +179,12 @@ class Venmo_Gateway extends PaymentGateway {
 
 		if ( ! empty( $venmo_username ) ) {
 			give_update_meta( $donation->id, self::CUSTOMER_VENMO_USERNAME_META_KEY, $venmo_username );
+
+			// Look up the donor's full name from their public Venmo profile in the background.
+			$cron_args = array( (int) $donation->id );
+			if ( false === wp_next_scheduled( Cron::FETCH_DONOR_VENMO_PROFILE_CRON_HOOK, $cron_args ) ) {
+				wp_schedule_single_event( time(), Cron::FETCH_DONOR_VENMO_PROFILE_CRON_HOOK, $cron_args );
+			}
 		}
 
 		$store_username = Venmo_Username::sanitize( give_get_option( 'venmo_store_username', '' ) );

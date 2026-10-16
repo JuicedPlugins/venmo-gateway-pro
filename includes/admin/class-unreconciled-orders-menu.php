@@ -2,17 +2,17 @@
 /**
  * Registers the reconcile library's "Unreconciled orders" page as a hidden admin page.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
 declare(strict_types=1);
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Admin;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Admin;
 
-use BrianHenryIE\WP_Venmo_Gateway\API\API_Interface;
-use BrianHenryIE\WP_Venmo_Gateway\API\Settings_Interface;
-use BrianHenryIE\WP_Venmo_Gateway\Psr\Log\LoggerInterface;
-use BrianHenryIE\WP_Venmo_Gateway\WP_Order_Email_Reconcile\Admin\Unreconciled_Orders_Page;
+use JuicedPlugins\Venmo_Gateway_Pro\API\API_Interface;
+use JuicedPlugins\Venmo_Gateway_Pro\API\Settings_Interface;
+use JuicedPlugins\Venmo_Gateway_Pro\Psr\Log\LoggerInterface;
+use JuicedPlugins\Venmo_Gateway_Pro\WP_Order_Email_Reconcile\Admin\Unreconciled_Orders_Page;
 
 /**
  * The page lists the WooCommerce orders and GiveWP donations still waiting for a Venmo payment email.
@@ -34,18 +34,15 @@ class Unreconciled_Orders_Menu {
 	const PARENT_SLUG = '';
 
 	/**
-	 * The capability required to view the page.
-	 */
-	const CAPABILITY = 'manage_woocommerce';
-
-	/**
-	 * @param API_Interface      $api      Provides the unpaid orders provider the page lists.
-	 * @param Settings_Interface $settings The plugin settings.
-	 * @param LoggerInterface    $logger   PSR logger.
+	 * @param API_Interface      $api          Provides the unpaid orders provider the page lists.
+	 * @param Settings_Interface $settings     The plugin settings.
+	 * @param Capabilities       $capabilities Decides the capability the page requires for the current user.
+	 * @param LoggerInterface    $logger       PSR logger.
 	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected Settings_Interface $settings,
+		protected Capabilities $capabilities,
 		protected LoggerInterface $logger,
 	) {
 	}
@@ -57,7 +54,7 @@ class Unreconciled_Orders_Menu {
 	 * @see Unreconciled_Orders_Page::register_submenu()
 	 */
 	public function register_submenu(): void {
-		$this->get_page()->register_submenu( self::PARENT_SLUG, self::CAPABILITY );
+		$this->get_page()->register_submenu( self::PARENT_SLUG, $this->capabilities->get_payment_emails_capability() );
 	}
 
 	/**

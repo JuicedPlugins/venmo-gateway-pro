@@ -2,11 +2,13 @@
 /**
  * Add the payment gateway to WooCommerce's list of gateways.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
+use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
+use Throwable;
 use WC_Order;
 use WC_Payment_Gateway;
 use WC_Payment_Gateways;
@@ -32,6 +34,37 @@ class Payment_Gateways {
 		$gateways[] = Venmo_Gateway::class;
 
 		return $gateways;
+	}
+
+	/**
+	 * Register a blocks checkout integration for each Venmo gateway instance, e.g. the original and duplicates
+	 * created with Duplicate Payment Gateways, each under its own gateway id.
+	 *
+	 * @hooked woocommerce_blocks_payment_method_type_registration
+	 * @see \Automattic\WooCommerce\Blocks\Payments\Api::initialize_payment_method_types()
+	 *
+	 * @param PaymentMethodRegistry $payment_method_registry The blocks checkout's payment methods.
+	 */
+	public function register_blocks_checkout_support( PaymentMethodRegistry $payment_method_registry ): void {
+
+		foreach ( WC_Payment_Gateways::instance()->payment_gateways() as $gateway ) {
+
+			if ( ! ( $gateway instanceof Venmo_Gateway ) ) {
+				continue;
+			}
+
+			// E.g. already registered by Duplicate Payment Gateways.
+			if ( $payment_method_registry->is_registered( $gateway->id ) ) {
+				continue;
+			}
+
+			try {
+				$payment_method_registry->register( new Venmo_Gateway_Blocks_Checkout_Support( $gateway ) );
+			} catch ( Throwable $exception ) {
+				// Do not break the blocks checkout for the other payment methods.
+				continue;
+			}
+		}
 	}
 
 	/**
@@ -64,10 +97,10 @@ class Payment_Gateways {
 	/**
 	 * When linking to WooCommerce/Settings/Payments from plugins.php, filter to only instances of this gateway.
 	 *
-	 * The plugins.php code checks for multiple instances of the gateway, then uses the `class=bh-wp-venmo-gateway`
+	 * The plugins.php code checks for multiple instances of the gateway, then uses the `class=juiced-venmo-gateway-pro`
 	 * parameter on the Settings link to invoke this function.
 	 *
-	 * i.e. `wp-admin/admin.php?page=wc-settings&tab=checkout&class=bh-wp-venmo-gateway`.
+	 * i.e. `wp-admin/admin.php?page=wc-settings&tab=checkout&class=juiced-venmo-gateway-pro`.
 	 *
 	 * @hooked woocommerce_payment_gateways
 	 * @see WC_Payment_Gateways::init()

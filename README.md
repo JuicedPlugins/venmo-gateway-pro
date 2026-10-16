@@ -1,6 +1,6 @@
-[![WordPress tested 5.5](https://img.shields.io/badge/WordPress-v5.5%20tested-0073aa.svg)](https://wordpress.org/plugins/bh-wp-venmo-gateway) [![PHPCS WPCS](https://img.shields.io/badge/PHPCS-WordPress%20Coding%20Standards-8892BF.svg)](https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards) [![PHPUnit ](.github/coverage.svg)](https://brianhenryie.github.io/plugin_slug/)
+[![WordPress tested 5.5](https://img.shields.io/badge/WordPress-v5.5%20tested-0073aa.svg)](https://wordpress.org/plugins/juiced-venmo-gateway-pro) [![PHPCS WPCS](https://img.shields.io/badge/PHPCS-WordPress%20Coding%20Standards-8892BF.svg)](https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards) [![PHPUnit ](.github/coverage.svg)](https://brianhenryie.github.io/plugin_slug/)
 
-# BH WP Venmo Gateway
+# Juiced Venmo Gateway Pro
 
 https://help.venmo.com/cs/articles/personal-qr-codes-on-venmo-faq-vhel316
 
@@ -47,13 +47,46 @@ TODO:
 
 What does  /checkout/order-pay/ look like? I think when an order is on-hold that's maybe not avaiable.
 
-`wp option delete bh-wp-venmo-gateway-last-imap-reconcile-run-time`
+`wp option delete juiced-venmo-gateway-pro-last-imap-reconcile-run-time`
 
-`wp cron event run bh_wp_venmo_gateway_check_for_payment_emails`
+`wp cron event run juiced_venmo_gateway_pro_check_for_payment_emails`
 
 
-`wp option delete bh-wp-venmo-gateway-last-imap-reconcile-run-time; wp cron event run bh_wp_venmo_gateway_check_for_payment_emails`
+`wp option delete juiced-venmo-gateway-pro-last-imap-reconcile-run-time; wp cron event run juiced_venmo_gateway_pro_check_for_payment_emails`
 
+
+## Roles and permissions
+
+Everything in the plugin's WooCommerce and GiveWP settings is gated by those plugins' own capabilities. The payment
+emails (the mailbox provided by [bh-wp-mailboxes](https://github.com/BrianHenryIE/bh-wp-mailboxes)) are
+administrator-only by default; the plugin lowers that for the roles that process payments:
+
+| Screen / action | Administrator | WooCommerce Shop manager | GiveWP Manager |
+|---|---|---|---|
+| Emails list, single email, mark read/unread, delete on server, change status | ✓ | ✓ (`manage_woocommerce`) | ✓ (`manage_give_settings`) |
+| Extraction result on an email; email log notes | ✓ | ✓ | ✓ |
+| Unreconciled orders page | ✓ | ✓ | ✓ |
+| Email accounts: add/edit/remove, credentials, "Check now" | ✓ | ✓ | ✓ |
+| Logs page | ✓ (`manage_options`) | – | – |
+| WooCommerce gateway settings | ✓ | ✓ | – |
+| GiveWP gateway settings, "Mark paid" on a donation | ✓ | – | ✓ (`edit_give_payments`) |
+
+The GiveWP counterpart of WooCommerce's Shop manager is the **GiveWP Manager** (`give_manager`) role. GiveWP's
+Accountant (`give_accountant`) can mark donations paid (`edit_give_payments`) but does not get the emails, since it
+lacks `manage_give_settings`; grant it via the filter below if wanted.
+
+The mapping lives in `Admin\Capabilities`, which answers bh-wp-mailboxes' `bh_wp_mailboxes_required_capability` filter
+for this plugin's emails and email accounts post types. To change it, add a later filter, e.g. to let GiveWP
+accountants process emails while keeping account management with the roles above:
+
+```php
+add_filter( 'bh_wp_mailboxes_required_capability', function ( string $required, string $capability, string $post_type ): string {
+	return 'venmo_payment_emails' === $post_type ? 'edit_give_payments' : $required;
+}, 20, 3 );
+```
+
+The REST ingress (the Cloudflare worker delivering emails) authenticates with an application password; that user
+needs the same capability, i.e. administrator, shop manager or GiveWP manager.
 
 ## Venmo Transaction Fees
 

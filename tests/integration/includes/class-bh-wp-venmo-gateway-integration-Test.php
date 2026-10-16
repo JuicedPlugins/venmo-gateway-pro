@@ -1,25 +1,25 @@
 <?php
 /**
- * Tests for BrianHenryIE\WP_Venmo_Gateway main setup class. Tests the actions are correctly added.
+ * Tests for JuicedPlugins\Venmo_Gateway_Pro main setup class. Tests the actions are correctly added.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Includes;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Includes;
 
-use BrianHenryIE\WP_Venmo_Gateway\Admin\Admin;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Payment_Gateways;
-use BrianHenryIE\WP_Venmo_Gateway\WPUnit_Testcase;
+use JuicedPlugins\Venmo_Gateway_Pro\Admin\Admin;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Payment_Gateways;
+use JuicedPlugins\Venmo_Gateway_Pro\WPUnit_Testcase;
 
 /**
  * Class Develop_Test
  */
-class BH_WP_Venmo_Gateway_Integration_Test extends WPUnit_Testcase {
+class Juiced_Venmo_Gateway_Pro_Integration_Test extends WPUnit_Testcase {
 
 	/**
 	 * Verify action to call load textdomain is added.
 	 */
-	public function test_action_plugins_loaded_load_plugin_textdomain() {
+	public function test_action_plugins_loaded_load_plugin_textdomain(): void {
 
 		$action_name       = 'plugins_loaded';
 		$expected_priority = 10;
@@ -54,7 +54,7 @@ class BH_WP_Venmo_Gateway_Integration_Test extends WPUnit_Testcase {
 	/**
 	 * Verify filter is added to register gateway.
 	 */
-	public function test_filter_woocommerce_payment_gateways_add_to_woocommerce() {
+	public function test_filter_woocommerce_payment_gateways_add_to_woocommerce(): void {
 
 		$action_name       = 'woocommerce_payment_gateways';
 		$expected_priority = 10;
@@ -90,7 +90,7 @@ class BH_WP_Venmo_Gateway_Integration_Test extends WPUnit_Testcase {
 	/**
 	 * Verify schedule/delete cron is hooked to plugins_loaded
 	 */
-	public function test_cron_action_enabled_disable() {
+	public function test_cron_action_enabled_disable(): void {
 
 		$action_name       = 'plugins_loaded';
 		$expected_priority = 10;
@@ -125,9 +125,9 @@ class BH_WP_Venmo_Gateway_Integration_Test extends WPUnit_Testcase {
 	/**
 	 * Verify cron action is added
 	 */
-	public function test_cron_action_check_for_payment_emails() {
+	public function test_cron_action_check_for_payment_emails(): void {
 
-		$action_name       = 'bh_wp_venmo_gateway_check_for_payment_emails';
+		$action_name       = 'juiced_venmo_gateway_pro_check_for_payment_emails';
 		$expected_priority = 10;
 		$class_type        = Cron::class;
 		$method_name       = 'check_for_payment_emails';

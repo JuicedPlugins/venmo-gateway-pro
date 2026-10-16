@@ -1,9 +1,12 @@
 <?php
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
-use BrianHenryIE\WP_Venmo_Gateway\WPUnit_Testcase;
+use JuicedPlugins\Venmo_Gateway_Pro\WPUnit_Testcase;
 
+/**
+ * @requires function WC
+ */
 class Payment_Gateways_Integration_Test extends WPUnit_Testcase {
 
 	/**
@@ -11,7 +14,7 @@ class Payment_Gateways_Integration_Test extends WPUnit_Testcase {
 	 *
 	 * This is distinct to `WC()->payment_gateways()->get_available_payment_gateways()`.
 	 */
-	public function test_gateway_is_added() {
+	public function test_gateway_is_added(): void {
 
 		$gateways = WC()->payment_gateways()->payment_gateways();
 

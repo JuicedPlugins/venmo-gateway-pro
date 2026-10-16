@@ -5,31 +5,32 @@
  * A class definition that includes attributes and functions used across both the
  * frontend-facing side of the site and the admin area.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway\Includes;
+namespace JuicedPlugins\Venmo_Gateway_Pro\Includes;
 
-use BrianHenryIE\WP_Venmo_Gateway\Admin\Plugins_Page;
-use BrianHenryIE\WP_Venmo_Gateway\Admin\Unreconciled_Orders_Menu;
-use BrianHenryIE\WP_Venmo_Gateway\API\API_Interface;
-use BrianHenryIE\WP_Venmo_Gateway\API\Settings_Interface;
-use BrianHenryIE\WP_Venmo_Gateway\Admin\Admin;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Features;
-use BrianHenryIE\WP_Venmo_Gateway\Psr\Log\LoggerInterface;
-use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Admin_Order_UI;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Email;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Order;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Orders_List_Filter;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Payment_Gateways;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Thank_You;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\GiveWP\Donation_Receipt as GiveWP_Donation_Receipt;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\GiveWP\Donations_List as GiveWP_Donations_List;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\GiveWP\Gateway_Settings as GiveWP_Gateway_Settings;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\GiveWP\GiveWP;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Venmo_Gateway;
-use BrianHenryIE\WP_Venmo_Gateway\Integrations\WooCommerce\Venmo_Gateway_Blocks_Checkout_Support;
+use JuicedPlugins\Venmo_Gateway_Pro\Admin\Capabilities;
+use JuicedPlugins\Venmo_Gateway_Pro\Admin\Plugins_Page;
+use JuicedPlugins\Venmo_Gateway_Pro\Admin\Unreconciled_Orders_Menu;
+use JuicedPlugins\Venmo_Gateway_Pro\API\API_Interface;
+use JuicedPlugins\Venmo_Gateway_Pro\API\Settings_Interface;
+use JuicedPlugins\Venmo_Gateway_Pro\Admin\Admin;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Features;
+use JuicedPlugins\Venmo_Gateway_Pro\Psr\Log\LoggerInterface;
+use JuicedPlugins\Venmo_Gateway_Pro\Upgrade\Upgrader;
+use JuicedPlugins\Venmo_Gateway_Pro\Upgrade\V430;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Admin_Order_UI;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Email;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Order;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Orders_List_Filter;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Payment_Gateways;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Thank_You;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Donation_Receipt as GiveWP_Donation_Receipt;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Donor_Venmo_Profile as GiveWP_Donor_Venmo_Profile;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Donations_List as GiveWP_Donations_List;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\Gateway_Settings as GiveWP_Gateway_Settings;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\GiveWP\GiveWP;
 
 /**
  * `add_action()` and `add_filter()` for the plugin.
@@ -52,11 +53,20 @@ class Register_Hooks {
 		protected Settings_Interface $settings,
 		protected LoggerInterface $logger,
 	) {
+		$this->define_upgrade_hooks();
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_woocommerce_hooks();
 		$this->define_givewp_hooks();
 		$this->define_cron_hooks();
+	}
+
+	/**
+	 * Run upgrade routines and handle reads of renamed options.
+	 */
+	protected function define_upgrade_hooks(): void {
+		( new Upgrader( $this->settings->get_plugin_version() ) )->register_hooks();
+		( new V430() )->register_hooks();
 	}
 
 	/**
@@ -80,6 +90,10 @@ class Register_Hooks {
 
 		$admin = new Admin();
 		add_action( 'plugins_loaded', array( $admin, 'init_notices' ) );
+
+		// Let shop managers and GiveWP managers view and process payment emails; accounts remain administrator-only.
+		$capabilities = new Capabilities( $this->settings );
+		add_filter( 'bh_wp_mailboxes_required_capability', array( $capabilities, 'filter_required_capability' ), 10, 3 );
 		add_action( 'admin_init', array( $admin, 'add_setup_notice' ) );
 
 		$plugins_page    = new Plugins_Page();
@@ -89,7 +103,7 @@ class Register_Hooks {
 		add_filter( "plugin_action_links_{$plugin_basename}", array( $plugins_page, 'add_unreconciled_orders_action_link' ) );
 
 		// The reconcile library's list of orders/donations still waiting for a payment email, as a hidden admin page linked from plugins.php.
-		$unreconciled_orders_menu = new Unreconciled_Orders_Menu( $this->api, $this->settings, $this->logger );
+		$unreconciled_orders_menu = new Unreconciled_Orders_Menu( $this->api, $this->settings, $capabilities, $this->logger );
 		add_action( 'admin_menu', array( $unreconciled_orders_menu, 'register_submenu' ) );
 	}
 
@@ -114,27 +128,20 @@ class Register_Hooks {
 		add_filter( 'woocommerce_order_list_table_prepare_items_query_args', array( $orders_list_filter, 'filter_hpos_list_table_query_args' ) );
 		add_filter( 'request', array( $orders_list_filter, 'filter_legacy_list_table_query_vars' ) );
 
-		$admin_order_page = new Order( $this->settings, $this->logger );
+		$admin_order_page = new Order( $this->api, $this->settings, $this->logger );
 		// On admin order screen, show the Venmo username in place of the billing address.
 		add_filter( 'woocommerce_order_get_formatted_billing_address', array( $admin_order_page, 'admin_view_billing_address' ), 10, 3 );
 		add_action( 'woocommerce_order_status_changed', array( $admin_order_page, 'schedule_email_check' ), 10, 3 );
+		// When a Venmo order is placed, look up the customer's name from their public Venmo profile in the background.
+		add_action( 'woocommerce_order_status_changed', array( $admin_order_page, 'schedule_fetch_customer_venmo_profile' ), 10, 3 );
+		add_action( Cron::FETCH_CUSTOMER_VENMO_PROFILE_CRON_HOOK, array( $admin_order_page, 'fetch_customer_venmo_profile' ) );
 
 		$thank_you = new Thank_You();
 		// Display payment instructions on thank you page.
 		add_filter( 'woocommerce_thankyou_order_received_text', array( $thank_you, 'print_instructions' ), 10, 2 );
 
-		// Register Venmo gateway with WooCommerce Blocks checkout.
-		add_action(
-			'woocommerce_blocks_payment_method_type_registration',
-			function ( PaymentMethodRegistry $payment_method_registry ): void {
-				$gateways = \WC_Payment_Gateways::instance()->payment_gateways();
-				if ( isset( $gateways['venmo'] ) && $gateways['venmo'] instanceof Venmo_Gateway ) {
-					$payment_method_registry->register(
-						new Venmo_Gateway_Blocks_Checkout_Support( $gateways['venmo'] )
-					);
-				}
-			}
-		);
+		// Register each Venmo gateway instance (the original and any duplicates) with WooCommerce Blocks checkout.
+		add_action( 'woocommerce_blocks_payment_method_type_registration', array( $payment_gateways, 'register_blocks_checkout_support' ) );
 
 		$email = new Email();
 		// Add payment link and instructions to the customer emails.
@@ -163,6 +170,10 @@ class Register_Hooks {
 
 		$givewp = new GiveWP();
 		add_action( 'givewp_register_payment_gateway', array( $givewp, 'register_gateway' ) );
+
+		// When a Venmo donation is created, look up the donor's name from their public Venmo profile in the background.
+		$donor_venmo_profile = new GiveWP_Donor_Venmo_Profile( $this->api, $this->logger );
+		add_action( Cron::FETCH_DONOR_VENMO_PROFILE_CRON_HOOK, array( $donor_venmo_profile, 'fetch_donor_venmo_profile' ) );
 
 		$gateway_settings = new GiveWP_Gateway_Settings();
 		add_filter( 'give_get_sections_gateways', array( $gateway_settings, 'register_sections' ) );

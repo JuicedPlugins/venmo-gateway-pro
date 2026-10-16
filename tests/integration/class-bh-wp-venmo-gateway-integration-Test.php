@@ -2,26 +2,26 @@
 /**
  * Class Plugin_Test. Tests the root plugin setup.
  *
- * @package brianhenryie/bh-wp-venmo-gateway
+ * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
-namespace BrianHenryIE\WP_Venmo_Gateway;
+namespace JuicedPlugins\Venmo_Gateway_Pro;
 
-use BrianHenryIE\WP_Venmo_Gateway\API\API;
+use JuicedPlugins\Venmo_Gateway_Pro\API\API;
 
 /**
  * Verifies the plugin has been instantiated and added to PHP's $GLOBALS variable.
  */
-class BH_WP_Venmo_Gateway_Integration_Test extends WPUnit_Testcase {
+class Juiced_Venmo_Gateway_Pro_Integration_Test extends WPUnit_Testcase {
 
 
 	/**
 	 * Test the main plugin object is added to PHP's GLOBALS and that it is the correct class.
 	 */
-	public function test_plugin_instantiated() {
+	public function test_plugin_instantiated(): void {
 
-		$this->assertArrayHasKey( 'bh_wp_venmo_gateway', $GLOBALS );
+		$this->assertArrayHasKey( 'juiced_venmo_gateway_pro', $GLOBALS );
 
-		$this->assertInstanceOf( API::class, $GLOBALS['bh_wp_venmo_gateway'] );
+		$this->assertInstanceOf( API::class, $GLOBALS['juiced_venmo_gateway_pro'] );
 	}
 }
