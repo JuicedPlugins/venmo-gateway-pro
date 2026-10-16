@@ -19,7 +19,7 @@
   "author": "BrianHenryIE",
   "license": "GPL-2.0+",
   "devDependencies": {
-    "@wordpress/e2e-test-utils-playwright": "^2.1.0",
+    "@wordpress/e2e-test-utils-playwright": "^3.0.0",
     "@wordpress/env": "^11.16.0",
     "dotenv": "^18.0.5",
     "@types/jquery": "^3.5",
