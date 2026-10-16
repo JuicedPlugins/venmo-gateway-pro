@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "95bd49b77c4f99a1968315052595db1b",
+    "content-hash": "c050f357ed67de57fc603b74824dff40",
     "packages": [
         {
             "name": "alleyinteractive/wordpress-autoloader",
@@ -10433,15 +10433,15 @@
         },
         {
             "name": "wpackagist-plugin/give",
-            "version": "4.18.0.1",
+            "version": "4.19.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/give/",
-                "reference": "tags/4.18.0.1"
+                "reference": "tags/4.19.0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/give.4.18.0.1.zip"
+                "url": "https://downloads.wordpress.org/plugin/give.4.19.0.zip"
             },
             "require": {
                 "composer/installers": "^1.0 || ^2.0"
