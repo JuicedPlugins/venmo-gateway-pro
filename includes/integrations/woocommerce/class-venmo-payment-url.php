@@ -46,7 +46,7 @@ class Venmo_Payment_Url {
 			'venmo://paycharge?txn=pay&recipients=%s&note=%s&amount=%s',
 			$this->store_venmo_username,
 			rawurlencode( 'order ' . $this->order->get_id() ),
-			rawurlencode( (string) $this->order->get_total() ),
+			rawurlencode( $this->get_amount() ),
 		);
 
 		return $venmo_payment_url;
@@ -62,7 +62,7 @@ class Venmo_Payment_Url {
 		$venmo_payment_url = sprintf(
 			'https://venmo.com/%s?txn=pay&amount=%s&note=%s',
 			rawurlencode( $this->store_venmo_username ),
-			rawurlencode( (string) $this->order->get_total() ),
+			rawurlencode( $this->get_amount() ),
 			rawurlencode( 'order ' . $this->order->get_id() )
 		);
 
@@ -79,10 +79,19 @@ class Venmo_Payment_Url {
 		$venmo_payment_url_display = sprintf(
 			'<span>venmo.com/</span>&#8203;<span>%s?</span>&#8203;<span>txn=pay&amp;</span>&#8203;<span>amount=%s&amp;</span>&#8203;<span>note=%s</span>',
 			rawurlencode( $this->store_venmo_username ),
-			rawurlencode( (string) $this->order->get_total() ),
+			rawurlencode( $this->get_amount() ),
 			rawurlencode( 'order ' . $this->order->get_id() )
 		);
 
 		return $venmo_payment_url_display;
+	}
+
+	/**
+	 * Get the order total as a string with the store's number of decimal places, e.g. `18.00`.
+	 *
+	 * `WC_Order::get_total()` can return an int, float or string.
+	 */
+	protected function get_amount(): string {
+		return wc_format_decimal( $this->order->get_total(), wc_get_price_decimals() );
 	}
 }
