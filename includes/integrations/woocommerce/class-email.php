@@ -10,6 +10,8 @@
  * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
+declare(strict_types=1);
+
 namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
 use JuicedPlugins\Venmo_Gateway_Pro\chillerlan\QRCode\Output\QROutputInterface;
@@ -32,9 +34,9 @@ class Email {
 	 *
 	 * @hooked woocommerce_email_before_order_table
 	 *
-	 * @param WC_Order $order
-	 * @param bool     $sent_to_admin
-	 * @param bool     $plain_text
+	 * @param WC_Order $order The order the email is for.
+	 * @param bool     $sent_to_admin Is the email being sent to the store admin (rather than the customer).
+	 * @param bool     $plain_text Is the email plain text (rather than HTML).
 	 */
 	public function email_instructions( WC_Order $order, bool $sent_to_admin, bool $plain_text = false ): void {
 
@@ -70,6 +72,8 @@ class Email {
 		$venmo_image_url     = plugins_url( 'assets/woocommerce/images/venmo-logo-25.png', 'juiced-venmo-gateway-pro/juiced-venmo-gateway-pro.php' );
 		$qr_code_data_base64 = ( new QR_Code() )->get_data_uri( $venmo_payment_qr_url, QROutputInterface::GDIMAGE_PNG );
 
+		$order_total = $this->get_plain_text_order_total( $order );
+
 		// Show from/to usernames if customer username is available.
 		if ( ! empty( $customer_venmo_username ) ) {
 			printf(
@@ -81,14 +85,14 @@ class Email {
 
 		printf(
 			'<p>Please send payment of %s via Venmo to <a href="%s">@%s</a></p>' . PHP_EOL . PHP_EOL,
-			esc_html( wc_price( (float) $order->get_total() ) ),
+			esc_html( $order_total ),
 			esc_url_raw( $venmo_payment_url ),
 			esc_html( $store_venmo_username )
 		);
 
 		printf(
 			'<p>Please pay the precise amount – <b>%s</b> and include the order number – <b>%d</b> in the note.</p>' . PHP_EOL . PHP_EOL,
-			esc_html( wc_price( (float) $order->get_total() ) ),
+			esc_html( $order_total ),
 			absint( $order->get_id() )
 		);
 
@@ -109,6 +113,26 @@ class Email {
 		printf(
 			'<p><a href="%s">Open Venmo</a></p>' . PHP_EOL . PHP_EOL,
 			esc_url_raw( $venmo_payment_url )
+		);
+	}
+
+	/**
+	 * Get the order total formatted with the currency symbol, without the HTML markup `wc_price()` adds.
+	 *
+	 * E.g. `$18.00` rather than `<span class="woocommerce-Price-amount amount"><bdi>...`.
+	 *
+	 * @param WC_Order $order The order whose total to format.
+	 */
+	protected function get_plain_text_order_total( WC_Order $order ): string {
+		return html_entity_decode(
+			wp_strip_all_tags(
+				wc_price(
+					(float) $order->get_total(),
+					array( 'currency' => $order->get_currency() )
+				)
+			),
+			ENT_QUOTES | ENT_HTML5,
+			'UTF-8'
 		);
 	}
 }
