@@ -160,16 +160,16 @@
         },
         {
             "name": "brianhenryie/bh-wp-logger",
-            "version": "0.5.0",
+            "version": "0.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/BrianHenryIE/bh-wp-logger.git",
-                "reference": "40ef62c20cad114bc8ef76fbf3a5ebf1e8cc6035"
+                "reference": "75a83c36ec86595e6737ef9ddd9fd0f6d250c9d7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/BrianHenryIE/bh-wp-logger/zipball/40ef62c20cad114bc8ef76fbf3a5ebf1e8cc6035",
-                "reference": "40ef62c20cad114bc8ef76fbf3a5ebf1e8cc6035",
+                "url": "https://api.github.com/repos/BrianHenryIE/bh-wp-logger/zipball/75a83c36ec86595e6737ef9ddd9fd0f6d250c9d7",
+                "reference": "75a83c36ec86595e6737ef9ddd9fd0f6d250c9d7",
                 "shasum": ""
             },
             "require": {
@@ -193,6 +193,7 @@
                 "lucatume/wp-browser": "^4.7",
                 "php-stubs/woocommerce-stubs": "*",
                 "phpstan/extension-installer": "*",
+                "phpstan/phpstan-mockery": "^2.0",
                 "phpstan/phpstan-phpunit": "^2.0",
                 "phpunit/phpcov": "*",
                 "rector/rector": "*",
@@ -200,6 +201,7 @@
                 "szepeviktor/phpstan-wordpress": "*",
                 "woocommerce/woocommerce-sniffs": "*",
                 "wordpress/wordpress": "*",
+                "wp-cli/wp-cli": "^2.12",
                 "wp-coding-standards/wpcs": "^3.4",
                 "wpackagist-plugin/woocommerce": "*",
                 "wpackagist-theme/twentytwenty": "*"
@@ -224,9 +226,9 @@
             "description": "A PSR logger for WordPress plugins, with a nice WP_List_Table UI.",
             "support": {
                 "issues": "https://github.com/BrianHenryIE/bh-wp-logger/issues",
-                "source": "https://github.com/BrianHenryIE/bh-wp-logger/tree/0.5.0"
+                "source": "https://github.com/BrianHenryIE/bh-wp-logger/tree/0.6.0"
             },
-            "time": "2026-09-30T12:19:39+00:00"
+            "time": "2026-10-14T18:55:43+00:00"
         },
         {
             "name": "brianhenryie/bh-wp-mailboxes",
