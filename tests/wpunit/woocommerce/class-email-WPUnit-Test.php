@@ -65,7 +65,7 @@ class Email_WPUnit_Test extends WPUnit_Testcase {
 		$order->add_meta_data( Venmo_Gateway::STORE_VENMO_USERNAME_META_KEY, 'brianhenryie', true );
 		$order->save();
 
-		add_action( 'woocommerce_email_before_order_table', array( new Email(), 'email_instructions' ), 10, 2 );
+		add_action( 'woocommerce_email_before_order_table', array( new Email(), 'email_instructions' ), 10, 3 );
 
 		// WC_Emails is a singleton that adds this in its constructor, but hooks are reset between tests.
 		$mailer = WC()->mailer();
@@ -83,5 +83,86 @@ class Email_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertStringNotContainsString( '&lt;span', $result );
 		$this->assertStringContainsString( 'Please send payment of $18.00 via Venmo', $result );
 		$this->assertStringContainsString( 'Please pay the precise amount – <b>$18.00</b>', $result );
+	}
+	/**
+	 * When WooCommerce says the email is plain text, no HTML should be printed.
+	 *
+	 * @covers ::email_instructions
+	 * @covers ::print_plain_text_instructions
+	 */
+	public function test_email_instructions_plain_text(): void {
+
+		$gateway = new Venmo_Gateway();
+		WC_Payment_Gateways::instance()->payment_gateways[] = $gateway;
+
+		$order = new WC_Order();
+		$order->set_status( 'on-hold' );
+		$order->set_payment_method( $gateway->id );
+		$order->set_total( '18.00' );
+		$order->add_meta_data( Venmo_Gateway::STORE_VENMO_USERNAME_META_KEY, 'brianhenryie', true );
+		$order->add_meta_data( Venmo_Gateway::CUSTOMER_VENMO_USERNAME_META_KEY, 'customer-username', true );
+		$order->save();
+
+		$sut = new Email();
+
+		ob_start();
+
+		$sut->email_instructions( $order, false, true );
+
+		$result = ob_get_clean();
+		$this->assertIsString( $result );
+
+		$this->assertSame( wp_strip_all_tags( $result ), trim( $result ) );
+		$this->assertStringNotContainsString( 'data:image', $result );
+		$this->assertStringContainsString( 'Payment from @customer-username to @brianhenryie', $result );
+		$this->assertStringContainsString( 'Please send payment of $18.00 via Venmo to @brianhenryie', $result );
+		$this->assertStringContainsString(
+			sprintf( 'Please pay the precise amount – $18.00 and include the order number – %d in the note.', $order->get_id() ),
+			$result
+		);
+		$this->assertStringContainsString(
+			sprintf( 'https://venmo.com/brianhenryie?txn=pay&amount=18.00&note=order%%20%d', $order->get_id() ),
+			$result
+		);
+	}
+
+	/**
+	 * Generate the full plain text customer on-hold email and check the instructions are not HTML.
+	 *
+	 * @covers ::email_instructions
+	 */
+	public function test_on_hold_plain_text_email_has_no_html(): void {
+
+		$gateway = new Venmo_Gateway();
+		WC_Payment_Gateways::instance()->payment_gateways[] = $gateway;
+
+		$order = new WC_Order();
+		$order->set_status( 'on-hold' );
+		$order->set_payment_method( $gateway->id );
+		$order->set_total( '18.00' );
+		$order->add_meta_data( Venmo_Gateway::STORE_VENMO_USERNAME_META_KEY, 'brianhenryie', true );
+		$order->save();
+
+		add_action( 'woocommerce_email_before_order_table', array( new Email(), 'email_instructions' ), 10, 3 );
+
+		// WC_Emails is a singleton that adds this in its constructor, but hooks are reset between tests.
+		$mailer = WC()->mailer();
+		if ( ! has_action( 'woocommerce_email_order_details', array( $mailer, 'order_details' ) ) ) {
+			add_action( 'woocommerce_email_order_details', array( $mailer, 'order_details' ), 10, 4 );
+		}
+
+		$emails = $mailer->get_emails();
+		$email  = $emails['WC_Email_Customer_On_Hold_Order'];
+
+		$email->object = $order;
+
+		$result = $email->get_content_plain();
+
+		$this->assertStringNotContainsString( '<p>', $result );
+		$this->assertStringNotContainsString( '<a ', $result );
+		$this->assertStringNotContainsString( '<img', $result );
+		$this->assertStringNotContainsString( 'data:image', $result );
+		$this->assertStringContainsString( 'Please send payment of $18.00 via Venmo to @brianhenryie', $result );
+		$this->assertStringContainsString( 'https://venmo.com/brianhenryie?txn=pay&amount=18.00', $result );
 	}
 }

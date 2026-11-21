@@ -145,7 +145,7 @@ class Register_Hooks {
 
 		$email = new Email();
 		// Add payment link and instructions to the customer emails.
-		add_action( 'woocommerce_email_before_order_table', array( $email, 'email_instructions' ), 10, 2 );
+		add_action( 'woocommerce_email_before_order_table', array( $email, 'email_instructions' ), 10, 3 );
 
 		/**
 		 * @see wp-admin/plugins.php?plugin_status=incompatible_with_feature
