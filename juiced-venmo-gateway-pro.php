@@ -18,7 +18,6 @@
  * Version:           4.3.0
  * Requires PHP:      8.4
  * Requires at least: 6.9
- * Tested up to:      7.1
  * Author:            Juiced Plugins
  * Author URI:        https://JuicedPlugins.com/
  * License:           GPL-2.0+
