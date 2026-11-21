@@ -12,6 +12,7 @@ use JuicedPlugins\Venmo_Gateway_Pro\Admin\Unreconciled_Orders_Menu;
 use JuicedPlugins\Venmo_Gateway_Pro\API\API_Interface;
 use JuicedPlugins\Venmo_Gateway_Pro\API\Settings_Interface;
 use JuicedPlugins\Venmo_Gateway_Pro\Unit_Testcase;
+use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Email;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Orders_List_Filter;
 use JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce\Payment_Gateways;
 use WP_Mock\Matcher\AnyInstance;
@@ -108,6 +109,14 @@ class Juiced_Venmo_Gateway_Pro_Unit_Test extends Unit_Testcase {
 		\WP_Mock::expectFilterAdded(
 			'request',
 			array( new AnyInstance( Orders_List_Filter::class ), 'filter_legacy_list_table_query_vars' )
+		);
+
+		// Three arguments, so the method is told when the email is plain text.
+		\WP_Mock::expectActionAdded(
+			'woocommerce_email_before_order_table',
+			array( new AnyInstance( Email::class ), 'email_instructions' ),
+			10,
+			3
 		);
 
 		$api      = $this->makeEmpty( API_Interface::class );

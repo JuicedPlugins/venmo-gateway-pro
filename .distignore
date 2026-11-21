@@ -49,3 +49,4 @@ vendor-prefixed/chillerlan/php-settings-container/.phpstan
 .gitattributes
 .gitignore
 phpcs.xml
+/*.md

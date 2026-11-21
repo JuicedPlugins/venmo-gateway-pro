@@ -37,3 +37,4 @@ parameters:
     ignoreErrors:
         - '#LoggerInterface\|null#'
         - '#apply_filters invoked with#'
+        - '#Parameter .* of static method WP_Mock::expectActionAdded\(\) expects .*WP_Mock\\Matcher\\AnyInstance.* given.#'

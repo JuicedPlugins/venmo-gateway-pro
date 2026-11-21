@@ -5,6 +5,8 @@
  * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
+declare(strict_types=1);
+
 namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
 use JuicedPlugins\Venmo_Gateway_Pro\WPUnit_Testcase;
@@ -56,6 +58,7 @@ class Admin_Order_UI_WPUnit_Test extends WPUnit_Testcase {
 		ob_start();
 		$sut->render_venmo_payment_metabox( $order );
 		$output = ob_get_clean();
+		$this->assertIsString( $output );
 
 		$this->assertEmpty( $output );
 	}
@@ -86,6 +89,7 @@ class Admin_Order_UI_WPUnit_Test extends WPUnit_Testcase {
 		ob_start();
 		$sut->render_venmo_payment_metabox( $order );
 		$output = ob_get_clean();
+		$this->assertIsString( $output );
 
 		$this->assertStringContainsString( 'No store Venmo username recorded', $output );
 	}
@@ -117,6 +121,7 @@ class Admin_Order_UI_WPUnit_Test extends WPUnit_Testcase {
 		ob_start();
 		$sut->render_venmo_payment_metabox( $order );
 		$output = ob_get_clean();
+		$this->assertIsString( $output );
 
 		$this->assertStringContainsString( 'https://venmo.com/teststore', $output );
 		$this->assertStringContainsString( 'data:image/', $output );
@@ -151,8 +156,47 @@ class Admin_Order_UI_WPUnit_Test extends WPUnit_Testcase {
 		ob_start();
 		$sut->render_venmo_payment_metabox( $order );
 		$output = ob_get_clean();
+		$this->assertIsString( $output );
 
 		$expected_note = rawurlencode( 'order ' . $order_id );
 		$this->assertStringContainsString( $expected_note, $output );
+	}
+
+	/**
+	 * The displayed payment URL uses zero-width spaces for wrapping; they must not be escaped into visible text.
+	 *
+	 * @covers ::render_venmo_payment_metabox
+	 */
+	public function test_render_venmo_payment_metabox_display_url_is_not_escaped(): void {
+
+		add_filter(
+			'woocommerce_payment_gateways',
+			function ( array $gateways ): array {
+				$gateways[] = Venmo_Gateway::class;
+				return $gateways;
+			}
+		);
+		WC_Payment_Gateways::instance()->init();
+
+		$order = new WC_Order();
+		$order->set_payment_method( 'venmo' );
+		$order->set_total( '18.00' );
+		$order->add_meta_data( Venmo_Gateway::STORE_VENMO_USERNAME_META_KEY, 'teststore', true );
+		$order->save();
+
+		$sut = new Admin_Order_UI();
+
+		ob_start();
+		$sut->render_venmo_payment_metabox( $order );
+		$output = ob_get_clean();
+		$this->assertIsString( $output );
+
+		$this->assertStringNotContainsString( '&amp;ZeroWidthSpace;', $output );
+		$this->assertStringNotContainsString( '&amp;nbsp;', $output );
+
+		$visible_text = html_entity_decode( wp_strip_all_tags( $output ), ENT_QUOTES | ENT_HTML5 );
+		$visible_text = str_replace( "\u{200B}", '', $visible_text );
+
+		$this->assertStringContainsString( 'venmo.com/teststore?txn=pay&amount=18.00&note=order%20' . $order->get_id(), $visible_text );
 	}
 }

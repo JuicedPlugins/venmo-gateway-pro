@@ -5,6 +5,8 @@
  * @package brianhenryie/juiced-venmo-gateway-pro
  */
 
+declare(strict_types=1);
+
 namespace JuicedPlugins\Venmo_Gateway_Pro\Integrations\WooCommerce;
 
 use JuicedPlugins\Venmo_Gateway_Pro\Venmo_Username;
@@ -17,6 +19,8 @@ class Venmo_Payment_Url {
 
 	/**
 	 * The payment address for the order.
+	 *
+	 * @var string
 	 */
 	protected string $store_venmo_username;
 
@@ -42,7 +46,7 @@ class Venmo_Payment_Url {
 			'venmo://paycharge?txn=pay&recipients=%s&note=%s&amount=%s',
 			$this->store_venmo_username,
 			rawurlencode( 'order ' . $this->order->get_id() ),
-			rawurlencode( $this->order->get_total() ),
+			rawurlencode( $this->get_amount() ),
 		);
 
 		return $venmo_payment_url;
@@ -58,7 +62,7 @@ class Venmo_Payment_Url {
 		$venmo_payment_url = sprintf(
 			'https://venmo.com/%s?txn=pay&amount=%s&note=%s',
 			rawurlencode( $this->store_venmo_username ),
-			rawurlencode( $this->order->get_total() ),
+			rawurlencode( $this->get_amount() ),
 			rawurlencode( 'order ' . $this->order->get_id() )
 		);
 
@@ -66,17 +70,28 @@ class Venmo_Payment_Url {
 	}
 
 	/**
-	 * Get the browser payment URL for printing. Returns a string split with `<span>` and `&ZeroWidthSpace;` for line-breaks.
+	 * Get the browser payment URL for printing. Returns a string split with `<span>` and zero-width spaces (`&#8203;`) for line-breaks.
+	 *
+	 * Uses the numeric entity because `wp_kses()` escapes unknown named entities like `&ZeroWidthSpace;`.
 	 */
 	public function get_html(): string {
 
 		$venmo_payment_url_display = sprintf(
-			'<span>venmo.com/</span>&ZeroWidthSpace;<span>%s?</span>&ZeroWidthSpace;<span>txn=pay&</span>&ZeroWidthSpace;<span>amount=%s&</span>&ZeroWidthSpace;<span>note=%s</span>',
+			'<span>venmo.com/</span>&#8203;<span>%s?</span>&#8203;<span>txn=pay&amp;</span>&#8203;<span>amount=%s&amp;</span>&#8203;<span>note=%s</span>',
 			rawurlencode( $this->store_venmo_username ),
-			rawurlencode( $this->order->get_total() ),
+			rawurlencode( $this->get_amount() ),
 			rawurlencode( 'order ' . $this->order->get_id() )
 		);
 
 		return $venmo_payment_url_display;
+	}
+
+	/**
+	 * Get the order total as a string with the store's number of decimal places, e.g. `18.00`.
+	 *
+	 * `WC_Order::get_total()` can return an int, float or string.
+	 */
+	protected function get_amount(): string {
+		return wc_format_decimal( $this->order->get_total(), wc_get_price_decimals() );
 	}
 }
