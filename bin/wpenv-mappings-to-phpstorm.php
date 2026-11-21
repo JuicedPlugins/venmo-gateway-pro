@@ -46,9 +46,29 @@ $port_raw    = $wp_env['port'] ?? 8888;
 $port        = is_int( $port_raw ) ? $port_raw : 8888;
 $server_name = "localhost:{$port}";
 
-$mappings_raw  = $wp_env['mappings'] ?? array();
-$raw_mappings  = is_array( $mappings_raw ) ? $mappings_raw : array();
 $path_mappings = array();
+
+// The plugins and themes wp-env mounts by directory name, e.g. `"plugins": [ "." ]` is this project itself.
+foreach ( array( 'plugins', 'themes' ) as $wp_content_subdirectory ) {
+	$sources_raw = $wp_env[ $wp_content_subdirectory ] ?? array();
+	foreach ( is_array( $sources_raw ) ? $sources_raw : array() as $source ) {
+		// Only local directories can be mapped; wp-env also accepts URLs, zip files and GitHub repositories.
+		if ( ! is_string( $source ) || ! str_starts_with( $source, '.' ) || str_ends_with( $source, '.zip' ) ) {
+			continue;
+		}
+
+		$local_absolute_path = normalize_absolute_path( $project_dir . '/' . $source );
+		$remote_root         = "/var/www/html/wp-content/{$wp_content_subdirectory}/" . basename( $local_absolute_path );
+
+		$path_mappings[ $remote_root ] = array(
+			'local'  => get_local_root( $source ),
+			'remote' => $remote_root,
+		);
+	}
+}
+
+$mappings_raw = $wp_env['mappings'] ?? array();
+$raw_mappings = is_array( $mappings_raw ) ? $mappings_raw : array();
 
 foreach ( $raw_mappings as $container_rel_path => $local_rel_path ) {
 	if ( ! is_string( $container_rel_path ) || ! is_string( $local_rel_path ) ) {
@@ -57,19 +77,14 @@ foreach ( $raw_mappings as $container_rel_path => $local_rel_path ) {
 
 	$remote_root = normalize_absolute_path( '/var/www/html/' . $container_rel_path );
 
-	if ( '.' === $local_rel_path ) {
-		$local_root = '$PROJECT_DIR$';
-	} elseif ( str_starts_with( $local_rel_path, './' ) ) {
-		$local_root = '$PROJECT_DIR$/' . substr( $local_rel_path, 2 );
-	} else {
-		$local_root = '$PROJECT_DIR$/' . ltrim( $local_rel_path, '/' );
-	}
-
-	$path_mappings[] = array(
-		'local'  => $local_root,
+	// Keyed by remote root so an explicit mapping replaces a plugin/theme at the same path.
+	$path_mappings[ $remote_root ] = array(
+		'local'  => get_local_root( $local_rel_path ),
 		'remote' => $remote_root,
 	);
 }
+
+$path_mappings = array_values( $path_mappings );
 
 if ( is_dir( $project_dir . '/wordpress' ) ) {
 	$path_mappings[] = array(
@@ -163,9 +178,15 @@ if ( false !== $existing_nodes ) {
 	}
 }
 
+// Remove stale container mappings, and any other mapping for a local directory that is mapped below, since
+// PhpStorm maps each local directory to one remote path. Leave unrelated mappings (e.g. added by hand) alone.
 $desired_remote_roots = array_column( $path_mappings, 'remote' );
+$desired_local_roots  = array_column( $path_mappings, 'local' );
 foreach ( $existing_by_remote as $remote_root => $node ) {
-	if ( ! in_array( $remote_root, $desired_remote_roots, true ) ) {
+	if ( in_array( $remote_root, $desired_remote_roots, true ) ) {
+		continue;
+	}
+	if ( str_starts_with( $remote_root, '/var/www/' ) || in_array( $node->getAttribute( 'local-root' ), $desired_local_roots, true ) ) {
 		$path_mappings_element->removeChild( $node );
 	}
 }
@@ -193,6 +214,21 @@ echo "Updated {$workspace_file} (server: {$server_name})\n";
 foreach ( $path_mappings as $mapping ) {
 	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	echo "  {$mapping['local']} -> {$mapping['remote']}\n";
+}
+
+/**
+ * Converts a path relative to the project root, as used in .wp-env.json, to a PhpStorm `$PROJECT_DIR$` path.
+ *
+ * @param string $local_relative_path E.g. `.`, `./development-plugin` or `wp-content/plugins/woocommerce`.
+ */
+function get_local_root( string $local_relative_path ): string {
+	if ( '.' === $local_relative_path ) {
+		return '$PROJECT_DIR$';
+	}
+	if ( str_starts_with( $local_relative_path, './' ) ) {
+		return '$PROJECT_DIR$/' . substr( $local_relative_path, 2 );
+	}
+	return '$PROJECT_DIR$/' . ltrim( $local_relative_path, '/' );
 }
 
 /**
