@@ -14,9 +14,10 @@
     "config": {
         "allow-plugins": {
             "composer/installers": true,
-            "dealerdirect/phpcodesniffer-composer-installer": true,
-            "phpstan/extension-installer": true,
             "cweagans/composer-patches": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true,
             "roots/wordpress-core-installer": true
         },
         "platform": {
@@ -26,6 +27,11 @@
         "sort-packages": true
     },
     "repositories": [
+        {
+            "name": "brianhenryie/bh-wp-plugin-updater",
+            "type": "path",
+            "url": "/Users/brianhenry/Sites/bh-wp-plugin-updater"
+        },
         {
             "name": "ericmann/secrets-api",
             "type": "git",
@@ -61,6 +67,8 @@
         "alleyinteractive/wordpress-autoloader": "*",
         "brianhenryie/bh-wp-logger": ">0.4",
         "brianhenryie/bh-wp-order-email-reconcile": "dev-master",
+        "brianhenryie/bh-wp-plugin-meta-kit": "^1.0.0",
+        "brianhenryie/bh-wp-plugin-updater": "dev-interface",
         "chillerlan/php-qrcode": "^5.0",
         "wordpress/secrets-api": "dev-main#eac860bab9b3600cc8371179c1e01e6058a63c8c"
     },

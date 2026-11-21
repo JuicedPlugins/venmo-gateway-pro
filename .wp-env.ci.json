@@ -3,7 +3,7 @@
     "WP_DEBUG_LOG": "/var/www/html/wp-content/debug.log",
     "WP_DEBUG_DISPLAY": false
   },
-  "core": "WordPress/WordPress#7.1.3",
+  "core": "WordPress/WordPress#7.1.5",
   "lifecycleScripts": {
     "afterStart": "bash 'tests/_wp-env/initialize-external.sh' ci"
   },
